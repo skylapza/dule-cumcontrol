@@ -1,4 +1,3 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -13,9 +12,15 @@
       text-align: center;
       padding: 50px 20px;
       margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
     h1 {
       color: #e0b3ff;
+      margin-bottom: 30px;
     }
     input {
       padding: 10px;
@@ -26,6 +31,8 @@
       border: none;
       background-color: #2b003f;
       color: white;
+      text-align: center;
+      box-sizing: border-box; /* Include padding in element's total width and height */
     }
     button {
       margin-top: 20px;
@@ -36,25 +43,37 @@
       color: white;
       border: none;
       cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background-color: #8c2bdc;
     }
     .instructions {
-      margin-top: 30px;
-      background: rgba(255, 255, 255, 0.05);
+      margin-top: 50px;
+      background-color: rgba(0, 0, 0, 0.3);
       padding: 20px;
-      border-radius: 12px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      border: 1px solid #6600cc;
+      border-radius: 10px;
+      max-width: 500px;
       text-align: left;
+    }
+    .instructions h2 {
+      color: #ffccff;
+      text-align: center;
+      margin-top: 0;
+    }
+    .instructions ol {
+      list-style-position: inside;
+      padding-left: 0;
+    }
+    .instructions li {
+      margin-bottom: 10px;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
-  <h1>เกมฝึกควบคุมการหลั่ง 💦</h1>
-  <p>กรุณาใส่ชื่อเล่นของคุณ</p>
-  <input type="text" id="username" placeholder="ชื่อเล่นของคุณ" />
-  <br/>
+  <h1>Dule CumControl 💦</h1>
+  <input type="text" id="username" placeholder="ใส่ชื่อเล่นของคุณที่นี่" maxlength="20" />
   <button onclick="start()">เริ่มเกม</button>
 
   <div class="instructions">
@@ -68,14 +87,11 @@
     </ol>
   </div>
 
-  <!-- Socket.IO library is loaded here -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Initialize socket and set up listener immediately after socket.io.js is loaded
-    const socket = io(); 
+    const socket = io();
 
-    // Set up the username-status listener once the socket is ready
-    socket.once("username-status", (isAvailable) => {
+    socket.on("username-status", (isAvailable) => {
       if (isAvailable) {
         localStorage.setItem("username", document.getElementById("username").value.trim());
         window.location.href = "/lobby.html";
@@ -84,19 +100,13 @@
       }
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // All other DOM-related setups can go here if needed,
-      // but socket and its initial listeners are already set up.
-    });
-
     function start() {
       const name = document.getElementById("username").value.trim();
       if (!name) {
-        alert("กรุณาใส่ชื่อก่อนเริ่มเกม");
+        alert("กรุณาใส่ชื่อผู้ใช้งานก่อน!");
         return;
       }
-      // socket is guaranteed to be defined here
-      socket.emit("check-username", name);
+      socket.emit("checkUsername", name);
     }
   </script>
 </body>
