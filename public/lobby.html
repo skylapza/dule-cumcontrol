@@ -1,10 +1,9 @@
-html lang="th">
+<!DOCTYPE html>
+<html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lobby</title>
-  <!-- ใช้ Socket.IO ที่เสิร์ฟจากเซิร์ฟเวอร์ของเราเอง เพื่อความสอดคล้องของเวอร์ชัน -->
-  <script src="/socket.io/socket.io.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -52,6 +51,7 @@ html lang="th">
       height: 150px;
       overflow-y: auto;
       margin-bottom: 10px;
+      text-align: left; /* เพิ่ม: จัดข้อความชิดซ้าย */
     }
 
     #chat input {
@@ -103,44 +103,36 @@ html lang="th">
     <button onclick="sendMessage()" id="sendBtn">ส่ง</button>
   </div>
 
+  <!-- ใช้ Socket.IO ที่เสิร์ฟจากเซิร์ฟเวอร์ของเราเอง เพื่อความสอดคล้องของเวอร์ชัน -->
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    let username = localStorage.getItem("username") || "ไม่ระบุ";
-    let cooldown = false;
-    let cooldownTime = 15;
+    // ประกาศและเริ่มต้นตัวแปรส่วนกลางทั้งหมดที่นี่
+    const socket = io(); // io() จะถูกเรียกหลังจาก socket.io.js โหลดแล้ว
+    let username = localStorage.getItem("username"); 
+    let cooldown = false; 
+    const cooldownTime = 15;
     let cooldownInterval;
 
-    socket.on("userCount", count => {
-      document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
-    });
-
-    // แก้ไข: ดึง username จาก localStorage ก่อนส่งไป joinRoom
+    // ฟังก์ชันที่เรียกใช้โดย onclick สามารถอยู่ตรงนี้ได้
     function joinRoom(room, role) {
-      const name = localStorage.getItem("username"); 
-      if (!name) {
+      if (!username || username.trim() === "") {
           alert("กรุณาใส่ชื่อเล่นของคุณที่หน้าแรกก่อน!");
-          window.location.href = "/"; // กลับไปหน้าแรก
+          window.location.href = "/"; 
           return;
       }
-      socket.emit("joinRoom", { room, role, name });
+      socket.emit("joinRoom", { room, role, name: username }); 
     }
-
-    socket.on("chatMessage", ({ user, text }) => {
-      const box = document.getElementById("chatMessages");
-      const msg = document.createElement("div");
-      msg.textContent = `${user}: ${text}`;
-      box.appendChild(msg);
-      box.scrollTop = box.scrollHeight;
-    });
 
     function sendMessage() {
       if (cooldown) return;
       const input = document.getElementById("chatInput");
+      const btn = document.getElementById("sendBtn"); 
+      
       if (input.value.trim() !== "") {
         socket.emit("chatMessage", { user: username, text: input.value });
         input.value = "";
         cooldown = true;
-        const btn = document.getElementById("sendBtn");
+        
         let remain = cooldownTime;
         btn.disabled = true;
         btn.textContent = `ส่ง (${remain})`;
@@ -157,21 +149,52 @@ html lang="th">
       }
     }
 
-    // เพิ่ม Listener สำหรับเหตุการณ์ redirect จาก server
-    socket.on('redirect', (url) => {
-        console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
-        window.location.href = url;
-    });
+    // DOMContentLoaded ใช้สำหรับผูก Event Listener และตั้งค่า socket.on listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!username || username.trim() === "") {
+            // alert("กรุณาใส่ชื่อเล่นของคุณที่หน้าแรกก่อน!"); // บรรทัดนี้อาจซ้ำซ้อนกับ joinRoom แต่คงไว้เพื่อความชัดเจน
+            // window.location.href = "/"; // กลับไปหน้าแรก
+            return; // หยุดการทำงานถ้าไม่มี username
+        }
 
-    // เพิ่ม Listener สำหรับกรณีเกิด Error ในการเข้าร่วมห้อง
-    socket.on('roomError', (message) => {
-        alert(message);
-    });
+        const chatInput = document.getElementById("chatInput");
+        const sendBtn = document.getElementById("sendBtn");
 
-    // เพิ่ม Listener สำหรับเมื่อมีคู่หลุดออกจากเกม
-    socket.on('partnerDisconnected', (message) => {
-        alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
-        window.location.href = '/lobby.html';
-    });
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
+        socket.on("userCount", count => {
+            document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
+        });
+
+        socket.on("chatMessage", ({ user, text }) => {
+            const box = document.getElementById("chatMessages");
+            const msg = document.createElement("div");
+            msg.textContent = `${user}: ${text}`;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
+        });
+
+        socket.on('redirect', (url) => {
+            console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
+            window.location.href = url;
+        });
+
+        socket.on('roomError', (message) => {
+            alert(message);
+        });
+
+        socket.on('partnerDisconnected', (message) => {
+            alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
+            window.location.href = '/lobby.html';
+        });
+
+    }); 
   </script>
+</body>
+</html>
+
