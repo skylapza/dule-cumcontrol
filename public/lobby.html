@@ -18,13 +18,27 @@
       color: #ffccff;
     }
 
+    .room-container {
+        display: flex;
+        flex-wrap: wrap; /* Allow rooms to wrap to the next line */
+        justify-content: center; /* Center rooms horizontally */
+        gap: 20px; /* Space between rooms */
+        margin-bottom: 30px;
+    }
+
     .room {
-      display: inline-block;
+      display: flex; /* Use flexbox for internal layout */
+      flex-direction: column; /* Stack items vertically */
       background: #2e2e2e;
       padding: 15px;
-      margin: 10px;
       border-radius: 10px;
-      width: 150px;
+      width: 180px; /* Adjust width as needed */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .room h2 {
+        margin-top: 0;
+        color: #ffccff;
     }
 
     .room button {
@@ -35,6 +49,34 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .room button:hover:enabled {
+        background-color: #7a47b1;
+    }
+
+    .room button:disabled {
+        background-color: #555;
+        cursor: not-allowed;
+    }
+
+    .room-status {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #bbb;
+    }
+
+    .ready-area {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #444;
+    }
+
+    .ready-area p {
+        margin-bottom: 10px;
+        color: #aaffaa;
+        font-weight: bold;
     }
 
     #chat {
@@ -42,119 +84,103 @@
       max-width: 400px;
       margin-left: auto;
       margin-right: auto;
+      background: #2e2e2e;
+      padding: 15px;
+      border-radius: 10px;
     }
 
     #chatMessages {
-      background: #1e1e1e;
+      height: 200px;
+      overflow-y: scroll;
+      border: 1px solid #444;
       padding: 10px;
-      border-radius: 8px;
-      height: 150px;
-      overflow-y: auto;
       margin-bottom: 10px;
-      text-align: left; /* เพิ่ม: จัดข้อความชิดซ้าย */
+      background: #1a1a1a;
+      border-radius: 5px;
+      text-align: left;
     }
 
-    #chat input {
-      width: 70%;
+    #chatInput {
+      width: calc(100% - 70px);
       padding: 8px;
       border-radius: 5px;
-      border: none;
+      border: 1px solid #444;
+      background: #3a3a3a;
+      color: white;
     }
 
-    #chat button {
-      padding: 8px 12px;
-      margin-left: 10px;
-      background: #ff66cc;
+    #sendBtn {
+      width: 60px;
+      padding: 8px;
+      margin-left: 5px;
+      background: #663399;
+      color: white;
       border: none;
       border-radius: 5px;
-      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <h1>ล็อบบี้</h1>
-  <p id="userCount">กำลังโหลดจำนวนผู้ใช้งาน...</p>
-  <div id="rooms">
-    <div class="room">
-      <h3>ห้อง 1</h3>
-      <button onclick="joinRoom('room1', 'player')">Player</button>
-      <button onclick="joinRoom('room1', 'master')">Master</button>
+  <p id="userCount">ผู้เล่นออนไลน์: 0 คน</p>
+
+  <div class="room-container">
+    <div class="room" id="room-1">
+      <h2>Room 1</h2>
+      <button onclick="joinRoom(1, 'player')" id="join-player-1">Join as Player</button>
+      <button onclick="joinRoom(1, 'master')" id="join-master-1">Join as Master</button>
+      <p class="room-status" id="room-status-1">ว่าง</p>
+      <div class="ready-area" id="ready-area-1" style="display: none;">
+        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+        <button onclick="sendReadySignal(1)" id="ready-button-1">พร้อม!</button>
+      </div>
     </div>
-    <div class="room">
-      <h3>ห้อง 2</h3>
-      <button onclick="joinRoom('room2', 'player')">Player</button>
-      <button onclick="joinRoom('room2', 'master')">Master</button>
+
+    <div class="room" id="room-2">
+      <h2>Room 2</h2>
+      <button onclick="joinRoom(2, 'player')" id="join-player-2">Join as Player</button>
+      <button onclick="joinRoom(2, 'master')" id="join-master-2">Join as Master</button>
+      <p class="room-status" id="room-status-2">ว่าง</p>
+      <div class="ready-area" id="ready-area-2" style="display: none;">
+        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+        <button onclick="sendReadySignal(2)" id="ready-button-2">พร้อม!</button>
+      </div>
     </div>
-    <div class="room">
-      <h3>ห้อง 3</h3>
-      <button onclick="joinRoom('room3', 'player')">Player</button>
-      <button onclick="joinRoom('room3', 'master')">Master</button>
+
+    <div class="room" id="room-3">
+      <h2>Room 3</h2>
+      <button onclick="joinRoom(3, 'player')" id="join-player-3">Join as Player</button>
+      <button onclick="joinRoom(3, 'master')" id="join-master-3">Join as Master</button>
+      <p class="room-status" id="room-status-3">ว่าง</p>
+      <div class="ready-area" id="ready-area-3" style="display: none;">
+        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+        <button onclick="sendReadySignal(3)" id="ready-button-3">พร้อม!</button>
+      </div>
     </div>
-    <div class="room">
-      <h3>ห้อง 4</h3>
-      <button onclick="joinRoom('room4', 'player')">Player</button>
-      <button onclick="joinRoom('room4', 'master')">Master</button>
+
     </div>
-  </div>
 
   <div id="chat">
+    <h2>แชท</h2>
     <div id="chatMessages"></div>
     <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ...">
-    <button onclick="sendMessage()" id="sendBtn">ส่ง</button>
+    <button id="sendBtn">ส่ง</button>
   </div>
 
-  <!-- ใช้ Socket.IO ที่เสิร์ฟจากเซิร์ฟเวอร์ของเราเอง เพื่อความสอดคล้องของเวอร์ชัน -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // ประกาศและเริ่มต้นตัวแปรส่วนกลางทั้งหมดที่นี่
-    const socket = io(); // io() จะถูกเรียกหลังจาก socket.io.js โหลดแล้ว
-    let username = localStorage.getItem("username"); 
-    let cooldown = false; 
-    const cooldownTime = 15;
-    let cooldownInterval;
+    const socket = io();
+    let selectedRoom = null;
+    let selectedRole = null;
+    let username = localStorage.getItem("username");
+    let hasJoinedRoom = false; // Flag เพื่อติดตามว่าผู้เล่นได้เข้าร่วมห้องแล้วหรือไม่
 
-    // ฟังก์ชันที่เรียกใช้โดย onclick สามารถอยู่ตรงนี้ได้
-    function joinRoom(room, role) {
-      if (!username || username.trim() === "") {
-          alert("กรุณาใส่ชื่อเล่นของคุณที่หน้าแรกก่อน!");
-          window.location.href = "/"; 
-          return;
-      }
-      socket.emit("joinRoom", { room, role, name: username }); 
-    }
-
-    function sendMessage() {
-      if (cooldown) return;
-      const input = document.getElementById("chatInput");
-      const btn = document.getElementById("sendBtn"); 
-      
-      if (input.value.trim() !== "") {
-        socket.emit("chatMessage", { user: username, text: input.value });
-        input.value = "";
-        cooldown = true;
-        
-        let remain = cooldownTime;
-        btn.disabled = true;
-        btn.textContent = `ส่ง (${remain})`;
-        cooldownInterval = setInterval(() => {
-          remain--;
-          btn.textContent = `ส่ง (${remain})`;
-          if (remain <= 0) {
-            clearInterval(cooldownInterval);
-            cooldown = false;
-            btn.disabled = false;
-            btn.textContent = "ส่ง";
-          }
-        }, 1000);
-      }
-    }
-
-    // DOMContentLoaded ใช้สำหรับผูก Event Listener และตั้งค่า socket.on listeners
     document.addEventListener('DOMContentLoaded', () => {
-        if (!username || username.trim() === "") {
-            // alert("กรุณาใส่ชื่อเล่นของคุณที่หน้าแรกก่อน!"); // บรรทัดนี้อาจซ้ำซ้อนกับ joinRoom แต่คงไว้เพื่อความชัดเจน
-            // window.location.href = "/"; // กลับไปหน้าแรก
-            return; // หยุดการทำงานถ้าไม่มี username
+        if (!username) {
+            alert("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!");
+            window.location.href = "/";
+            return;
         }
 
         const chatInput = document.getElementById("chatInput");
@@ -167,34 +193,201 @@
             }
         });
 
-        socket.on("userCount", count => {
-            document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
+        // เมื่อเชื่อมต่อ socket สำเร็จ, ขอสถานะห้องล่าสุด
+        socket.on('connect', () => {
+            socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
+            console.log('Connected to socket, requesting room status.');
         });
+    });
 
-        socket.on("chatMessage", ({ user, text }) => {
-            const box = document.getElementById("chatMessages");
-            const msg = document.createElement("div");
-            msg.textContent = `${user}: ${text}`;
-            box.appendChild(msg);
-            box.scrollTop = box.scrollHeight;
+    function sendMessage() {
+        const chatInput = document.getElementById("chatInput");
+        const text = chatInput.value.trim();
+        if (text) {
+            socket.emit("chatMessage", { room: selectedRoom, text: text, user: username }); // ส่งชื่อผู้ใช้และห้องด้วย
+            chatInput.value = "";
+        }
+    }
+
+    function sendReadySignal(roomNumber) {
+        if (!username || selectedRoom !== roomNumber || !hasJoinedRoom) {
+            alert("มีข้อผิดพลาด! กรุณาลองใหม่.");
+            return;
+        }
+        socket.emit("playerReady", { room: roomNumber, role: selectedRole });
+        const readyBtn = document.getElementById(`ready-button-${roomNumber}`);
+        if (readyBtn) {
+            readyBtn.disabled = true; // ปิดปุ่ม "พร้อม" ชั่วคราว
+            readyBtn.textContent = "รอการยืนยันจากคู่...";
+        }
+    }
+
+    function joinRoom(roomNumber, role) {
+        if (!username) {
+            alert("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!");
+            window.location.href = "/";
+            return;
+        }
+        if (hasJoinedRoom) {
+            alert("คุณได้เข้าร่วมห้องแล้ว หรือกำลังรอการจับคู่");
+            return;
+        }
+
+        selectedRoom = roomNumber;
+        selectedRole = role;
+
+        // ส่งข้อมูลการเข้าร่วมห้องไปให้เซิร์ฟเวอร์
+        socket.emit("joinRoom", { room: roomNumber, role: role, name: username });
+
+        // แสดงสถานะ "กำลังรอ" ทันทีที่ผู้เล่นกดเข้าร่วม
+        const statusElement = document.getElementById(`room-status-${roomNumber}`);
+        if (statusElement) {
+            statusElement.textContent = `กำลังรอคู่สำหรับ ${role}...`;
+        }
+        
+        // ปิดปุ่ม "Join" ทั้งหมดในห้องนั้นๆ และห้องอื่นๆ
+        disableAllJoinButtons();
+        // ตั้งค่า flag ว่าผู้เล่นได้เข้าร่วมห้องแล้ว
+        hasJoinedRoom = true; 
+    }
+
+    function disableAllJoinButtons() {
+        const rooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
+        rooms.forEach(roomNum => {
+            const playerBtn = document.getElementById(`join-player-${roomNum}`);
+            const masterBtn = document.getElementById(`join-master-${roomNum}`);
+            if (playerBtn) playerBtn.disabled = true;
+            if (masterBtn) masterBtn.disabled = true;
         });
+    }
 
-        socket.on('redirect', (url) => {
-            console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
-            window.location.href = url;
+    function enableAllJoinButtons() {
+        const rooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
+        rooms.forEach(roomNum => {
+            const playerBtn = document.getElementById(`join-player-${roomNum}`);
+            const masterBtn = document.getElementById(`join-master-${roomNum}`);
+            if (playerBtn) playerBtn.disabled = false;
+            if (masterBtn) masterBtn.disabled = false;
+            // รีเซ็ตสถานะปุ่มพร้อมและข้อความ
+            const readyBtn = document.getElementById(`ready-button-${roomNum}`);
+            if (readyBtn) {
+                readyBtn.disabled = false;
+                readyBtn.textContent = "พร้อม!";
+            }
         });
+    }
 
-        socket.on('roomError', (message) => {
-            alert(message);
+    // Listener สำหรับการอัปเดตสถานะห้องจากเซิร์ฟเวอร์
+    socket.on("roomStatusUpdate", (data) => {
+        // data จะมี { room: roomNumber, player: playerName, master: masterName, readyToStart: boolean, playerReady: boolean, masterReady: boolean }
+        const roomDiv = document.getElementById(`room-${data.room}`);
+        if (!roomDiv) return;
+
+        const statusElement = document.getElementById(`room-status-${data.room}`);
+        const joinPlayerBtn = document.getElementById(`join-player-${data.room}`);
+        const joinMasterBtn = document.getElementById(`join-master-${data.room}`);
+        const readyArea = document.getElementById(`ready-area-${data.room}`);
+        const readyBtn = document.getElementById(`ready-button-${data.room}`);
+        
+        // อัปเดตสถานะผู้เล่นในห้อง
+        let statusText = "ว่าง";
+        if (data.player && data.master) {
+            statusText = `ครบ: ${data.player} (Player), ${data.master} (Master)`;
+            // แสดงปุ่มพร้อม ถ้าเราอยู่ในห้องนี้และคู่พร้อมแล้ว
+            if (data.room === selectedRoom) { // เราอยู่ในห้องนี้
+                if (data.readyToStart) { // ทั้งคู่พร้อมที่จะเริ่ม
+                    readyArea.style.display = 'block';
+                    if (readyBtn) readyBtn.disabled = false; // เปิดปุ่มพร้อม
+                    if (readyBtn) readyBtn.textContent = "พร้อม!";
+                } else { // คู่ยังไม่พร้อม
+                    readyArea.style.display = 'block';
+                    if (selectedRole === 'player' && data.masterReady) {
+                        if (readyBtn) readyBtn.textContent = "Master พร้อมแล้ว! คุณพร้อมยัง?";
+                    } else if (selectedRole === 'master' && data.playerReady) {
+                        if (readyBtn) readyBtn.textContent = "Player พร้อมแล้ว! คุณพร้อมยัง?";
+                    } else {
+                        if (readyBtn) readyBtn.textContent = "รอคู่กดยืนยัน...";
+                    }
+                    if (readyBtn) readyBtn.disabled = false; // เรายังกดพร้อมได้
+                }
+            } else { // เราไม่ได้อยู่ในห้องนี้
+                readyArea.style.display = 'none';
+            }
+        } else if (data.player) {
+            statusText = `มี Player: ${data.player} | รอ Master`;
+            readyArea.style.display = 'none';
+        } else if (data.master) {
+            statusText = `มี Master: ${data.master} | รอ Player`;
+            readyArea.style.display = 'none';
+        }
+        statusElement.textContent = statusText;
+
+        // จัดการสถานะปุ่ม Join สำหรับทุกห้อง
+        // Loop ผ่านทุกห้องที่มีอยู่เพื่ออัปเดตสถานะปุ่ม
+        const allRooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
+        allRooms.forEach(roomNum => {
+            const pBtn = document.getElementById(`join-player-${roomNum}`);
+            const mBtn = document.getElementById(`join-master-${roomNum}`);
+            
+            // ตรวจสอบข้อมูลสถานะของห้องที่กำลังพิจารณา
+            const currentRoomData = (data.room === roomNum) ? data : {};
+
+            // ปิดปุ่ม "Join" ถ้าห้องนั้นมีผู้เล่นฝั่งนั้นอยู่แล้ว หรือถ้าเราอยู่ในห้อง
+            if (pBtn) {
+                pBtn.disabled = !!currentRoomData.player || hasJoinedRoom;
+            }
+            if (mBtn) {
+                mBtn.disabled = !!currentRoomData.master || hasJoinedRoom;
+            }
+            
+            // หากห้องนี้คือห้องที่เราเข้าร่วมอยู่, ให้ปิดปุ่ม Join ของห้องนี้เสมอ
+            if (selectedRoom === roomNum) {
+                if (pBtn) pBtn.disabled = true;
+                if (mBtn) mBtn.disabled = true;
+            }
         });
+    });
 
-        socket.on('partnerDisconnected', (message) => {
-            alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
-            window.location.href = '/lobby.html';
-        });
+    socket.on("userCount", count => {
+        document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
+    });
 
-    }); 
+    socket.on("chatMessage", ({ user, text }) => {
+        const box = document.getElementById("chatMessages");
+        const msg = document.createElement("div");
+        msg.textContent = `${user}: ${text}`;
+        box.appendChild(msg);
+        box.scrollTop = box.scrollHeight;
+    });
+
+    socket.on('redirect', (url) => {
+        console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
+        window.location.href = url;
+    });
+
+    socket.on('roomError', (message) => {
+        alert(message);
+        // ถ้าเกิด Error ตอน join room, ให้ผู้เล่นสามารถเลือกห้องใหม่ได้
+        hasJoinedRoom = false;
+        selectedRoom = null;
+        selectedRole = null;
+        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
+        // อาจจะต้องขอสถานะห้องอีกครั้งเพื่ออัปเดตหน้าจอให้ถูกต้อง
+        socket.emit('requestRoomStatus'); 
+    });
+
+    socket.on('partnerDisconnected', (message) => {
+        alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
+        // รีเซ็ตสถานะ Client เพื่อให้เข้าร่วมห้องใหม่ได้
+        selectedRoom = null;
+        selectedRole = null;
+        hasJoinedRoom = false;
+        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
+        // ซ่อนปุ่มพร้อมและอัปเดตสถานะของห้องที่เคยอยู่
+        // ต้องให้เซิร์ฟเวอร์ส่ง roomStatusUpdate มาใหม่สำหรับห้องนั้นๆ
+        socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์อีกครั้ง
+    });
+
   </script>
 </body>
 </html>
-
