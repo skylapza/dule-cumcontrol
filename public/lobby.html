@@ -248,7 +248,7 @@
                 // ถ้าเคย, ให้ส่ง Event ไปถาม Server ว่ายังอยู่ในห้องนั้นอยู่ไหม
                 selectedRoom = parseInt(storedRoom);
                 selectedRole = storedRole;
-                hasJoinedRoom = true; // ตั้งค่าชั่วคราว
+                hasJoinedRoom = true; // ตั้งค่าชั่วคราวเป็น true เพื่อให้ปุ่มถูกปิดในขณะที่รอการยืนยันจาก Server
                 disableAllJoinButtons(); // ปิดปุ่มไว้ก่อน
                 const statusElement = document.getElementById(`room-status-${selectedRoom}`);
                 if (statusElement) {
@@ -256,7 +256,9 @@
                 }
                 socket.emit('checkMyRoomStatus', { room: selectedRoom, role: selectedRole });
             } else {
-                 socket.emit('requestRoomStatus'); // ถ้าไม่เคย ให้ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
+                 // ถ้าไม่เคย ให้รีเซ็ตสถานะและขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
+                 resetLocalStateAndEnableButtons(); // เพิ่มการเรียก reset
+                 socket.emit('requestRoomStatus'); 
             }
         });
     });
@@ -331,6 +333,7 @@
         for (let i = 1; i <= TOTAL_ROOMS; i++) {
             const playerBtn = document.getElementById(`join-player-${i}`);
             const masterBtn = document.getElementById(`join-master-${i}`);
+            // ตรวจสอบว่าปุ่มนั้นมีอยู่จริงก่อนที่จะเข้าถึง .disabled
             if (playerBtn) playerBtn.disabled = false;
             if (masterBtn) masterBtn.disabled = false;
             // รีเซ็ตสถานะปุ่มพร้อมและข้อความ
@@ -345,6 +348,12 @@
             const statusElement = document.getElementById(`room-status-${i}`);
             if (statusElement) statusElement.textContent = 'ว่าง';
         }
+        // ตั้งค่า hasJoinedRoom เป็น false เมื่อมีการเปิดปุ่มทั้งหมด
+        hasJoinedRoom = false; 
+        selectedRoom = null;
+        selectedRole = null;
+        localStorage.removeItem('lastRoom');
+        localStorage.removeItem('lastRole');
     }
 
     // Listener สำหรับการอัปเดตสถานะห้องจากเซิร์ฟเวอร์
@@ -424,20 +433,25 @@
             selectedRoom = room;
             selectedRole = role;
             hasJoinedRoom = true;
-            // อัปเดต UI ด้วย roomData ที่ Server ส่งมา
-            socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดอีกครั้งเพื่ออัปเดต UI
+            // อัปเดต UI ด้วย roomData ที่ Server ส่งมา (อาจจะเรียก requestRoomStatus อีกครั้ง)
+            socket.emit('requestRoomStatus'); 
         } else {
             console.log('Server confirms you are not in any active room. Resetting local state.');
-            // หาก Server บอกว่าไม่อยู่ในห้อง ให้รีเซ็ตสถานะ Client
-            selectedRoom = null;
-            selectedRole = null;
-            hasJoinedRoom = false;
-            localStorage.removeItem('lastRoom');
-            localStorage.removeItem('lastRole');
-            enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-            socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้งเพื่อแสดงผลที่ถูกต้อง
+            // หาก Server บอกว่าไม่อยู่ในห้อง ให้รีเซ็ตสถานะ Client และเปิดปุ่มทั้งหมด
+            resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
         }
     });
+
+    // ฟังก์ชันสำหรับรีเซ็ตสถานะ Client และเปิดปุ่ม Join ทั้งหมด
+    function resetLocalStateAndEnableButtons() {
+        selectedRoom = null;
+        selectedRole = null;
+        hasJoinedRoom = false;
+        localStorage.removeItem('lastRoom');
+        localStorage.removeItem('lastRole');
+        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
+        socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้งเพื่อแสดงผลที่ถูกต้อง
+    }
 
 
     socket.on("userCount", count => {
@@ -463,27 +477,16 @@
     socket.on('roomError', (message) => {
         alert(message);
         // ถ้าเกิด Error ตอน join room, ให้ผู้เล่นสามารถเลือกห้องใหม่ได้
-        hasJoinedRoom = false;
-        selectedRoom = null;
-        selectedRole = null;
-        localStorage.removeItem('lastRoom');
-        localStorage.removeItem('lastRole');
-        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-        socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้ง
+        resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
     });
 
     socket.on('partnerDisconnected', (message) => {
         alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
         // รีเซ็ตสถานะ Client เพื่อให้เข้าร่วมห้องใหม่ได้
-        selectedRoom = null;
-        selectedRole = null;
-        hasJoinedRoom = false;
-        localStorage.removeItem('lastRoom');
-        localStorage.removeItem('lastRole');
-        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-        socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์อีกครั้ง
+        resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
     });
 
   </script>
 </body>
 </html>
+
