@@ -1,94 +1,66 @@
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
+const path = require("path");
 
-app.use(express.static("public"));
+const PORT = process.env.PORT || 3000;
+app.use(express.static(path.join(__dirname, "public")));
 
-const usedNames = new Set();
-const roomStates = {}; // บันทึกสถานะห้อง
+const rooms = {};
 
 io.on("connection", (socket) => {
-  console.log("Client connected");
+  console.log("👤 เชื่อมต่อ:", socket.id);
 
-  // ตรวจสอบชื่อซ้ำ
-  socket.on("check-username", (name) => {
-    const isAvailable = !usedNames.has(name);
-    if (isAvailable) usedNames.add(name);
-    socket.emit("username-status", isAvailable);
-  });
-
-  // เข้าห้องเกม
   socket.on("joinRoom", ({ room, role, name }) => {
-    socket.username = name;
+    if (!rooms[room]) rooms[room] = {};
+
+    if (role === "player") {
+      if (rooms[room].player) return socket.emit("roomError", "ฝั่ง Player มีคนแล้ว!");
+      rooms[room].player = socket.id;
+      rooms[room].playerName = name;
+    } else if (role === "master") {
+      if (rooms[room].master) return socket.emit("roomError", "ฝั่ง Master มีคนแล้ว!");
+      rooms[room].master = socket.id;
+      rooms[room].masterName = name;
+    }
+
+    socket.join(room);
     socket.room = room;
     socket.role = role;
-    socket.join(room);
+    socket.username = name;
 
-    // บันทึกสถานะห้อง
-    if (!roomStates[room]) {
-      roomStates[room] = {};
-    }
-    roomStates[room][role] = socket.id;
-
-    console.log(`${name} joined ${room} as ${role}`);
-
-    // ส่งให้คู่ห้องรู้ว่าเชื่อมต่อแล้ว
-    const otherRole = role === "player" ? "master" : "player";
-    const otherId = roomStates[room][otherRole];
-
-    if (otherId) {
-      io.to(socket.id).emit("paired", { role, room });
-      io.to(otherId).emit("paired", { role: otherRole, room });
-    }
-
-    // redirect ไปยังหน้าที่ต้องการ
-    if (role === "player") {
-      socket.emit("redirect", `/player_game.html`);
-    } else if (role === "master") {
-      socket.emit("redirect", `/master_control.html`);
-    }
+    io.to(room).emit("roomStatusUpdate", {
+      player: rooms[room].playerName || null,
+      master: rooms[room].masterName || null,
+      readyToStart: rooms[room].player && rooms[room].master
+    });
   });
 
-  // ส่งสัญญาณ WebRTC
-  socket.on("signal", (data) => {
-    const room = socket.room;
-    const role = socket.role;
-    const otherRole = role === "player" ? "master" : "player";
-    const otherId = roomStates[room]?.[otherRole];
-    if (otherId) {
-      io.to(otherId).emit("signal", data);
-    }
-  });
-
-  // แชทในล็อบบี้
-  socket.on("chatMessage", ({ user, text }) => {
-    io.emit("chatMessage", { user, text });
-  });
-
-  // ออกจากระบบ
   socket.on("disconnect", () => {
-    console.log(`Disconnected: ${socket.username}`);
-    usedNames.delete(socket.username);
-
     const room = socket.room;
-    const role = socket.role;
-    if (roomStates[room]) {
-      const otherRole = role === "player" ? "master" : "player";
-      const otherId = roomStates[room][otherRole];
-      delete roomStates[room][role];
+    if (room && rooms[room]) {
+      if (socket.id === rooms[room].player) {
+        delete rooms[room].player;
+        delete rooms[room].playerName;
+      } else if (socket.id === rooms[room].master) {
+        delete rooms[room].master;
+        delete rooms[room].masterName;
+      }
 
-      if (otherId) {
-        io.to(otherId).emit("partnerDisconnected", `${role} ออกจากห้องแล้ว`);
+      io.to(room).emit("roomStatusUpdate", {
+        player: rooms[room].playerName || null,
+        master: rooms[room].masterName || null,
+        readyToStart: rooms[room].player && rooms[room].master
+      });
+
+      if (!rooms[room].player && !rooms[room].master) {
+        delete rooms[room];
       }
     }
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+http.listen(PORT, () => {
+  console.log("🚀 Server พร้อมใช้งานที่พอร์ต", PORT);
 });
