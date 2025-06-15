@@ -1,0 +1,95 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dule CumControl 💦</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(to bottom, #1d0033, #32004d);
+      color: white;
+      text-align: center;
+      padding: 50px 20px;
+      margin: 0;
+    }
+    h1 {
+      color: #e0b3ff;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      width: 80%;
+      max-width: 300px;
+      border-radius: 8px;
+      border: none;
+      background-color: #2b003f;
+      color: white;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      background-color: #6a0dad;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .instructions {
+      margin-top: 30px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      border: 1px solid #6600cc;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>เกมฝึกควบคุมการหลั่ง 💦</h1>
+  <p>กรุณาใส่ชื่อเล่นของคุณ</p>
+  <input type="text" id="username" placeholder="ชื่อเล่นของคุณ" />
+  <br/>
+  <button onclick="start()">เริ่มเกม</button>
+
+  <div class="instructions">
+    <h2>วิธีการเล่น</h2>
+    <ol>
+      <li>ใส่ชื่อเล่นของคุณ แล้วเข้าสู่ Lobby</li>
+      <li>เลือกบทบาท Player หรือ Master</li>
+      <li>กด “พร้อม” ทั้งสองฝั่งเพื่อเริ่มเกม</li>
+      <li>Master ควบคุม Player ด้วยคำสั่ง</li>
+      <li>เป้าหมาย: ห้ามหลั่งก่อนอนุญาต</li>
+    </ol>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function start() {
+      const name = document.getElementById("username").value.trim();
+      if (!name) {
+        alert("กรุณาใส่ชื่อก่อนเริ่มเกม");
+        return;
+      }
+
+      socket.emit("check-username", name);
+
+      socket.once("username-status", (isAvailable) => {
+        if (isAvailable) {
+          localStorage.setItem("username", name);
+          window.location.href = "/lobby.html";
+        } else {
+          alert("ชื่อซ้ำ! กรุณาเปลี่ยนชื่ออื่น");
+        }
+      });
+    }
+  </script>
+</body>
+</html>
