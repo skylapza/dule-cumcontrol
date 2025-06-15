@@ -12,10 +12,15 @@
       padding: 20px;
       background: #121212;
       color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     h1 {
       color: #ffccff;
+      margin-bottom: 20px;
     }
 
     .room-container {
@@ -24,6 +29,8 @@
         justify-content: center; /* Center rooms horizontally */
         gap: 20px; /* Space between rooms */
         margin-bottom: 30px;
+        max-width: 90%;
+        width: 100%;
     }
 
     .room {
@@ -32,12 +39,14 @@
       background: #2e2e2e;
       padding: 15px;
       border-radius: 10px;
-      width: 180px; /* Adjust width as needed */
+      width: 200px; /* Adjust width as needed */
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      flex-shrink: 0; /* Prevent shrinking on smaller screens */
     }
 
     .room h2 {
         margin-top: 0;
+        margin-bottom: 10px;
         color: #ffccff;
     }
 
@@ -50,6 +59,7 @@
       border-radius: 5px;
       cursor: pointer;
       transition: background-color 0.2s ease;
+      font-size: 0.95em;
     }
 
     .room button:hover:enabled {
@@ -65,59 +75,83 @@
         margin-top: 10px;
         font-size: 0.9em;
         color: #bbb;
+        min-height: 2em; /* Ensure consistent height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .ready-area {
         margin-top: 15px;
         padding-top: 10px;
         border-top: 1px solid #444;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
     }
 
     .ready-area p {
-        margin-bottom: 10px;
+        margin: 0;
         color: #aaffaa;
         font-weight: bold;
     }
 
     #chat {
       margin-top: 30px;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
+      max-width: 450px;
+      width: 90%;
       background: #2e2e2e;
       padding: 15px;
       border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #chat h2 {
+        margin-top: 0;
+        color: #ffccff;
+        margin-bottom: 10px;
     }
 
     #chatMessages {
       height: 200px;
-      overflow-y: scroll;
+      overflow-y: auto;
       border: 1px solid #444;
       padding: 10px;
       margin-bottom: 10px;
       background: #1a1a1a;
       border-radius: 5px;
       text-align: left;
+      word-wrap: break-word; /* Allow long words to break */
+    }
+
+    .chat-input-area {
+        display: flex;
+        gap: 5px;
     }
 
     #chatInput {
-      width: calc(100% - 70px);
+      flex-grow: 1;
       padding: 8px;
       border-radius: 5px;
       border: 1px solid #444;
       background: #3a3a3a;
       color: white;
+      box-sizing: border-box;
     }
 
     #sendBtn {
-      width: 60px;
-      padding: 8px;
-      margin-left: 5px;
+      padding: 8px 12px;
       background: #663399;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #sendBtn:hover {
+        background-color: #7a47b1;
     }
   </style>
 </head>
@@ -164,8 +198,10 @@
   <div id="chat">
     <h2>แชท</h2>
     <div id="chatMessages"></div>
-    <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ...">
-    <button id="sendBtn">ส่ง</button>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ...">
+        <button id="sendBtn">ส่ง</button>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -175,6 +211,9 @@
     let selectedRole = null;
     let username = localStorage.getItem("username");
     let hasJoinedRoom = false; // Flag เพื่อติดตามว่าผู้เล่นได้เข้าร่วมห้องแล้วหรือไม่
+
+    // จำนวนห้องทั้งหมดในหน้า Lobby (ต้องตรงกับจำนวนห้องใน HTML)
+    const TOTAL_ROOMS = 3; 
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!username) {
@@ -195,8 +234,24 @@
 
         // เมื่อเชื่อมต่อ socket สำเร็จ, ขอสถานะห้องล่าสุด
         socket.on('connect', () => {
-            socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
             console.log('Connected to socket, requesting room status.');
+            // ตรวจสอบว่าผู้ใช้นี้เคยเข้าร่วมห้องก่อนหน้านี้หรือไม่
+            if (localStorage.getItem('lastRoom') && localStorage.getItem('lastRole')) {
+                // ถ้าเคย, ให้แสดงสถานะ 'กำลังรอ...' สำหรับห้องนั้น
+                const lastRoom = parseInt(localStorage.getItem('lastRoom'));
+                const lastRole = localStorage.getItem('lastRole');
+                selectedRoom = lastRoom;
+                selectedRole = lastRole;
+                hasJoinedRoom = true;
+                const statusElement = document.getElementById(`room-status-${lastRoom}`);
+                if (statusElement) {
+                    statusElement.textContent = `กำลังรอคู่สำหรับ ${lastRole}...`;
+                }
+                disableAllJoinButtons(); // ปิดปุ่ม join ทั้งหมด
+                // แล้วเซิร์ฟเวอร์จะส่ง roomStatusUpdate มาเอง
+            } else {
+                 socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
+            }
         });
     });
 
@@ -204,7 +259,9 @@
         const chatInput = document.getElementById("chatInput");
         const text = chatInput.value.trim();
         if (text) {
-            socket.emit("chatMessage", { room: selectedRoom, text: text, user: username }); // ส่งชื่อผู้ใช้และห้องด้วย
+            // ถ้าอยู่ในห้องใดๆ ก็จะส่งข้อความเข้าห้องนั้น
+            // ถ้าไม่, จะส่งข้อความรวม (ให้ server จัดการ)
+            socket.emit("chatMessage", { room: selectedRoom, text: text, user: username }); 
             chatInput.value = "";
         }
     }
@@ -235,6 +292,10 @@
 
         selectedRoom = roomNumber;
         selectedRole = role;
+        
+        // เก็บข้อมูลห้องและบทบาทไว้ใน localStorage (เผื่อรีเฟรชหน้า)
+        localStorage.setItem('lastRoom', roomNumber);
+        localStorage.setItem('lastRole', role);
 
         // ส่งข้อมูลการเข้าร่วมห้องไปให้เซิร์ฟเวอร์
         socket.emit("joinRoom", { room: roomNumber, role: role, name: username });
@@ -252,29 +313,29 @@
     }
 
     function disableAllJoinButtons() {
-        const rooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
-        rooms.forEach(roomNum => {
-            const playerBtn = document.getElementById(`join-player-${roomNum}`);
-            const masterBtn = document.getElementById(`join-master-${roomNum}`);
+        for (let i = 1; i <= TOTAL_ROOMS; i++) {
+            const playerBtn = document.getElementById(`join-player-${i}`);
+            const masterBtn = document.getElementById(`join-master-${i}`);
             if (playerBtn) playerBtn.disabled = true;
             if (masterBtn) masterBtn.disabled = true;
-        });
+        }
     }
 
     function enableAllJoinButtons() {
-        const rooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
-        rooms.forEach(roomNum => {
-            const playerBtn = document.getElementById(`join-player-${roomNum}`);
-            const masterBtn = document.getElementById(`join-master-${roomNum}`);
+        for (let i = 1; i <= TOTAL_ROOMS; i++) {
+            const playerBtn = document.getElementById(`join-player-${i}`);
+            const masterBtn = document.getElementById(`join-master-${i}`);
             if (playerBtn) playerBtn.disabled = false;
             if (masterBtn) masterBtn.disabled = false;
             // รีเซ็ตสถานะปุ่มพร้อมและข้อความ
-            const readyBtn = document.getElementById(`ready-button-${roomNum}`);
+            const readyArea = document.getElementById(`ready-area-${i}`);
+            if (readyArea) readyArea.style.display = 'none'; // ซ่อน ready area
+            const readyBtn = document.getElementById(`ready-button-${i}`);
             if (readyBtn) {
                 readyBtn.disabled = false;
                 readyBtn.textContent = "พร้อม!";
             }
-        });
+        }
     }
 
     // Listener สำหรับการอัปเดตสถานะห้องจากเซิร์ฟเวอร์
@@ -284,8 +345,6 @@
         if (!roomDiv) return;
 
         const statusElement = document.getElementById(`room-status-${data.room}`);
-        const joinPlayerBtn = document.getElementById(`join-player-${data.room}`);
-        const joinMasterBtn = document.getElementById(`join-master-${data.room}`);
         const readyArea = document.getElementById(`ready-area-${data.room}`);
         const readyBtn = document.getElementById(`ready-button-${data.room}`);
         
@@ -293,22 +352,25 @@
         let statusText = "ว่าง";
         if (data.player && data.master) {
             statusText = `ครบ: ${data.player} (Player), ${data.master} (Master)`;
-            // แสดงปุ่มพร้อม ถ้าเราอยู่ในห้องนี้และคู่พร้อมแล้ว
-            if (data.room === selectedRoom) { // เราอยู่ในห้องนี้
-                if (data.readyToStart) { // ทั้งคู่พร้อมที่จะเริ่ม
-                    readyArea.style.display = 'block';
-                    if (readyBtn) readyBtn.disabled = false; // เปิดปุ่มพร้อม
-                    if (readyBtn) readyBtn.textContent = "พร้อม!";
-                } else { // คู่ยังไม่พร้อม
-                    readyArea.style.display = 'block';
-                    if (selectedRole === 'player' && data.masterReady) {
-                        if (readyBtn) readyBtn.textContent = "Master พร้อมแล้ว! คุณพร้อมยัง?";
-                    } else if (selectedRole === 'master' && data.playerReady) {
-                        if (readyBtn) readyBtn.textContent = "Player พร้อมแล้ว! คุณพร้อมยัง?";
-                    } else {
-                        if (readyBtn) readyBtn.textContent = "รอคู่กดยืนยัน...";
+            // แสดงปุ่มพร้อม ถ้าเราอยู่ในห้องนี้
+            if (data.room === selectedRoom && hasJoinedRoom) { 
+                readyArea.style.display = 'flex'; // ใช้ flex เพื่อจัดปุ่มให้สวยงาม
+                if (readyBtn) {
+                    if (selectedRole === 'player' && data.playerReady) { // เราพร้อมแล้ว
+                        readyBtn.disabled = true;
+                        readyBtn.textContent = "รอ Master กดยืนยัน...";
+                    } else if (selectedRole === 'master' && data.masterReady) { // เราพร้อมแล้ว
+                        readyBtn.disabled = true;
+                        readyBtn.textContent = "รอ Player กดยืนยัน...";
+                    } else { // เรายังไม่พร้อม
+                        readyBtn.disabled = false;
+                        readyBtn.textContent = "พร้อม!";
                     }
-                    if (readyBtn) readyBtn.disabled = false; // เรายังกดพร้อมได้
+
+                    if (data.playerReady && data.masterReady) {
+                        readyBtn.textContent = "ทั้งคู่พร้อมแล้ว! รอเริ่มเกม...";
+                        readyBtn.disabled = true;
+                    }
                 }
             } else { // เราไม่ได้อยู่ในห้องนี้
                 readyArea.style.display = 'none';
@@ -323,29 +385,27 @@
         statusElement.textContent = statusText;
 
         // จัดการสถานะปุ่ม Join สำหรับทุกห้อง
-        // Loop ผ่านทุกห้องที่มีอยู่เพื่ออัปเดตสถานะปุ่ม
-        const allRooms = [1, 2, 3]; // สมมติว่ามี 3 ห้อง
-        allRooms.forEach(roomNum => {
+        for (let roomNum = 1; roomNum <= TOTAL_ROOMS; roomNum++) {
             const pBtn = document.getElementById(`join-player-${roomNum}`);
             const mBtn = document.getElementById(`join-master-${roomNum}`);
             
-            // ตรวจสอบข้อมูลสถานะของห้องที่กำลังพิจารณา
             const currentRoomData = (data.room === roomNum) ? data : {};
 
-            // ปิดปุ่ม "Join" ถ้าห้องนั้นมีผู้เล่นฝั่งนั้นอยู่แล้ว หรือถ้าเราอยู่ในห้อง
             if (pBtn) {
+                // ปิดปุ่มถ้าห้องนั้นมี Player หรือถ้าเราเข้าร่วมห้องอื่นอยู่แล้ว
                 pBtn.disabled = !!currentRoomData.player || hasJoinedRoom;
             }
             if (mBtn) {
+                // ปิดปุ่มถ้าห้องนั้นมี Master หรือถ้าเราเข้าร่วมห้องอื่นอยู่แล้ว
                 mBtn.disabled = !!currentRoomData.master || hasJoinedRoom;
             }
             
             // หากห้องนี้คือห้องที่เราเข้าร่วมอยู่, ให้ปิดปุ่ม Join ของห้องนี้เสมอ
-            if (selectedRoom === roomNum) {
+            if (selectedRoom === roomNum && hasJoinedRoom) {
                 if (pBtn) pBtn.disabled = true;
                 if (mBtn) mBtn.disabled = true;
             }
-        });
+        }
     });
 
     socket.on("userCount", count => {
@@ -362,6 +422,9 @@
 
     socket.on('redirect', (url) => {
         console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
+        // ล้างค่าใน localStorage เมื่อกำลังจะเปลี่ยนหน้าไปหน้าเกม
+        localStorage.removeItem('lastRoom');
+        localStorage.removeItem('lastRole');
         window.location.href = url;
     });
 
@@ -371,9 +434,10 @@
         hasJoinedRoom = false;
         selectedRoom = null;
         selectedRole = null;
+        localStorage.removeItem('lastRoom');
+        localStorage.removeItem('lastRole');
         enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-        // อาจจะต้องขอสถานะห้องอีกครั้งเพื่ออัปเดตหน้าจอให้ถูกต้อง
-        socket.emit('requestRoomStatus'); 
+        socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้ง
     });
 
     socket.on('partnerDisconnected', (message) => {
@@ -382,12 +446,14 @@
         selectedRoom = null;
         selectedRole = null;
         hasJoinedRoom = false;
+        localStorage.removeItem('lastRoom');
+        localStorage.removeItem('lastRole');
         enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-        // ซ่อนปุ่มพร้อมและอัปเดตสถานะของห้องที่เคยอยู่
-        // ต้องให้เซิร์ฟเวอร์ส่ง roomStatusUpdate มาใหม่สำหรับห้องนั้นๆ
         socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์อีกครั้ง
     });
 
+    // ตรวจสอบเมื่อหน้าถูกโหลด ว่ามีข้อมูล lastRoom/lastRole ใน localStorage หรือไม่
+    // ถ้ามี, ให้ลองส่ง requestRoomStatus และรออัปเดตจาก server (handled by socket.on('connect'))
   </script>
 </body>
 </html>
