@@ -1,33 +1,9 @@
-const express = require("express");
-const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const path = require("path");
-
-const PORT = process.env.PORT || 3000;
-app.use(express.static(path.join(__dirname, "public")));
-
-// โครงสร้างข้อมูลสำหรับเก็บสถานะของแต่ละห้อง
-// rooms = {
-//   'roomNumber': {
-//     player: socket.id,
-//     playerName: 'ชื่อ Player',
-//     playerReady: false, // สถานะพร้อมของ Player
-//     master: socket.id,
-//     masterName: 'ชื่อ Master',
-//     masterReady: false, // สถานะพร้อมของ Master
-//     gameStarted: false, // สถานะว่าเกมได้เริ่มแล้วหรือไม่
-//   }
-// }
-const rooms = {};
-const connectedUsers = {}; // เพื่อเก็บจำนวนผู้ใช้ทั้งหมดที่เชื่อมต่อ
-
 io.on("connection", (socket) => {
   console.log("👤 เชื่อมต่อ:", socket.id);
   connectedUsers[socket.id] = { id: socket.id, username: null, room: null, role: null }; // เก็บข้อมูลผู้ใช้
   io.emit("userCount", Object.keys(connectedUsers).length); // อัปเดตจำนวนผู้ใช้ทั้งหมด
 
-  // Event เมื่อ Client ขอสถานะห้องทั้งหมด (เมื่อเข้า Lobby)
+  // เมื่อ Client ขอสถานะห้องทั้งหมด (เมื่อเข้า Lobby)
   socket.on('requestRoomStatus', () => {
     // ส่งสถานะของทุกห้องกลับไปให้ Client นี้
     for (const roomNum in rooms) {
@@ -45,10 +21,35 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Listener ใหม่: Client ขอตรวจสอบสถานะห้องที่เคยอยู่
+  socket.on('checkMyRoomStatus', ({ room, role }) => {
+      // ตรวจสอบว่า socket นี้ยังอยู่ในห้องนั้นจริงหรือไม่ตามที่ server รู้
+      if (rooms[room] && 
+          ((role === 'player' && rooms[room].player === socket.id) || 
+           (role === 'master' && rooms[room].master === socket.id))) {
+          // ถ้า Server ยืนยันว่าอยู่ในห้องนั้นจริง
+          socket.emit('myRoomStatusResponse', { 
+              inRoom: true, 
+              room: room, 
+              role: role,
+              roomData: {
+                  player: rooms[room].playerName || null,
+                  master: rooms[room].masterName || null,
+                  playerReady: rooms[room].playerReady || false,
+                  masterReady: rooms[room].masterReady || false
+              }
+          });
+      } else {
+          // ถ้า Server ไม่พบว่าอยู่ในห้องนั้นแล้ว
+          socket.emit('myRoomStatusResponse', { inRoom: false });
+      }
+  });
+
+
   // Event สำหรับตรวจสอบชื่อผู้ใช้
   socket.on("checkUsername", (username) => {
     // ตรวจสอบว่าชื่อนี้มีผู้ใช้อื่นใช้อยู่แล้วหรือไม่
-    const isUsernameTaken = Object.values(connectedUsers).some(user => user.username === username);
+    const isUsernameTaken = Object.values(connectedUsers).some(user => user.username === username && user.id !== socket.id); // ตรวจสอบ ID ด้วย
     if (isUsernameTaken) {
       socket.emit("username-status", false); // ไม่ว่าง
     } else {
@@ -281,8 +282,4 @@ io.on("connection", (socket) => {
       });
     }
   });
-});
-
-http.listen(PORT, () => {
-  console.log(`🚀 Server กำลังทำงานที่พอร์ต ${PORT}`);
 });
