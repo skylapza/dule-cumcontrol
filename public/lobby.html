@@ -160,6 +160,7 @@
   <p id="userCount">ผู้เล่นออนไลน์: 0 คน</p>
 
   <div class="room-container">
+    <!-- Room 1 -->
     <div class="room" id="room-1">
       <h2>Room 1</h2>
       <button onclick="joinRoom(1, 'player')" id="join-player-1">Join as Player</button>
@@ -171,6 +172,7 @@
       </div>
     </div>
 
+    <!-- Room 2 -->
     <div class="room" id="room-2">
       <h2>Room 2</h2>
       <button onclick="joinRoom(2, 'player')" id="join-player-2">Join as Player</button>
@@ -182,6 +184,7 @@
       </div>
     </div>
 
+    <!-- Room 3 -->
     <div class="room" id="room-3">
       <h2>Room 3</h2>
       <button onclick="joinRoom(3, 'player')" id="join-player-3">Join as Player</button>
@@ -193,7 +196,9 @@
       </div>
     </div>
 
-    </div>
+    <!-- เพิ่มห้องได้ตามต้องการ -->
+
+  </div>
 
   <div id="chat">
     <h2>แชท</h2>
@@ -232,25 +237,26 @@
             }
         });
 
-        // เมื่อเชื่อมต่อ socket สำเร็จ, ขอสถานะห้องล่าสุด
+        // เมื่อเชื่อมต่อ socket สำเร็จ
         socket.on('connect', () => {
             console.log('Connected to socket, requesting room status.');
             // ตรวจสอบว่าผู้ใช้นี้เคยเข้าร่วมห้องก่อนหน้านี้หรือไม่
-            if (localStorage.getItem('lastRoom') && localStorage.getItem('lastRole')) {
-                // ถ้าเคย, ให้แสดงสถานะ 'กำลังรอ...' สำหรับห้องนั้น
-                const lastRoom = parseInt(localStorage.getItem('lastRoom'));
-                const lastRole = localStorage.getItem('lastRole');
-                selectedRoom = lastRoom;
-                selectedRole = lastRole;
-                hasJoinedRoom = true;
-                const statusElement = document.getElementById(`room-status-${lastRoom}`);
+            const storedRoom = localStorage.getItem('lastRoom');
+            const storedRole = localStorage.getItem('lastRole');
+
+            if (storedRoom && storedRole) {
+                // ถ้าเคย, ให้ส่ง Event ไปถาม Server ว่ายังอยู่ในห้องนั้นอยู่ไหม
+                selectedRoom = parseInt(storedRoom);
+                selectedRole = storedRole;
+                hasJoinedRoom = true; // ตั้งค่าชั่วคราว
+                disableAllJoinButtons(); // ปิดปุ่มไว้ก่อน
+                const statusElement = document.getElementById(`room-status-${selectedRoom}`);
                 if (statusElement) {
-                    statusElement.textContent = `กำลังรอคู่สำหรับ ${lastRole}...`;
+                    statusElement.textContent = `กำลังตรวจสอบสถานะห้องสำหรับ ${selectedRole}...`;
                 }
-                disableAllJoinButtons(); // ปิดปุ่ม join ทั้งหมด
-                // แล้วเซิร์ฟเวอร์จะส่ง roomStatusUpdate มาเอง
+                socket.emit('checkMyRoomStatus', { room: selectedRoom, role: selectedRole });
             } else {
-                 socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
+                 socket.emit('requestRoomStatus'); // ถ้าไม่เคย ให้ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
             }
         });
     });
@@ -335,6 +341,9 @@
                 readyBtn.disabled = false;
                 readyBtn.textContent = "พร้อม!";
             }
+            // รีเซ็ตข้อความสถานะห้อง
+            const statusElement = document.getElementById(`room-status-${i}`);
+            if (statusElement) statusElement.textContent = 'ว่าง';
         }
     }
 
@@ -408,6 +417,29 @@
         }
     });
 
+    // Listener ใหม่: รับการตอบกลับสถานะห้องจาก Server
+    socket.on('myRoomStatusResponse', ({ inRoom, room, role, roomData }) => {
+        if (inRoom) {
+            console.log(`Server confirms you are still ${role} in Room ${room}.`);
+            selectedRoom = room;
+            selectedRole = role;
+            hasJoinedRoom = true;
+            // อัปเดต UI ด้วย roomData ที่ Server ส่งมา
+            socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดอีกครั้งเพื่ออัปเดต UI
+        } else {
+            console.log('Server confirms you are not in any active room. Resetting local state.');
+            // หาก Server บอกว่าไม่อยู่ในห้อง ให้รีเซ็ตสถานะ Client
+            selectedRoom = null;
+            selectedRole = null;
+            hasJoinedRoom = false;
+            localStorage.removeItem('lastRoom');
+            localStorage.removeItem('lastRole');
+            enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
+            socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้งเพื่อแสดงผลที่ถูกต้อง
+        }
+    });
+
+
     socket.on("userCount", count => {
         document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
     });
@@ -452,8 +484,6 @@
         socket.emit('requestRoomStatus'); // ขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์อีกครั้ง
     });
 
-    // ตรวจสอบเมื่อหน้าถูกโหลด ว่ามีข้อมูล lastRoom/lastRole ใน localStorage หรือไม่
-    // ถ้ามี, ให้ลองส่ง requestRoomStatus และรออัปเดตจาก server (handled by socket.on('connect'))
   </script>
 </body>
 </html>
