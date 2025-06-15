@@ -5,7 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dule CumControl 💦</title>
-  <script src="/socket.io/socket.io.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -69,8 +68,26 @@
     </ol>
   </div>
 
+  <!-- Socket.IO library is loaded here -->
+  <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    // Initialize socket and set up listener immediately after socket.io.js is loaded
+    const socket = io(); 
+
+    // Set up the username-status listener once the socket is ready
+    socket.once("username-status", (isAvailable) => {
+      if (isAvailable) {
+        localStorage.setItem("username", document.getElementById("username").value.trim());
+        window.location.href = "/lobby.html";
+      } else {
+        alert("ชื่อซ้ำ! กรุณาเปลี่ยนชื่ออื่น");
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // All other DOM-related setups can go here if needed,
+      // but socket and its initial listeners are already set up.
+    });
 
     function start() {
       const name = document.getElementById("username").value.trim();
@@ -78,17 +95,8 @@
         alert("กรุณาใส่ชื่อก่อนเริ่มเกม");
         return;
       }
-
+      // socket is guaranteed to be defined here
       socket.emit("check-username", name);
-
-      socket.once("username-status", (isAvailable) => {
-        if (isAvailable) {
-          localStorage.setItem("username", name);
-          window.location.href = "/lobby.html";
-        } else {
-          alert("ชื่อซ้ำ! กรุณาเปลี่ยนชื่ออื่น");
-        }
-      });
     }
   </script>
 </body>
