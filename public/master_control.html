@@ -346,330 +346,362 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Global socket connection
-        const socket = io();
+        // NEW: All JavaScript code is now wrapped in DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Global socket connection
+            const socket = io(); // This line is now safe to execute here
 
-        // Global variables for WebRTC and game state
-        let peerConnection;
-        let localStream;
-        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
-        let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
-        let myRoom; // NEW: Global variable for current room
-        let myRole; // NEW: Global variable for current role
+            // Global variables for WebRTC and game state
+            let peerConnection;
+            let localStream;
+            let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+            let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
+            let myRoom; // Global variable for current room
+            let myRole; // Global variable for current role
 
-        // WebRTC Config with STUN servers
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
-            ]
-        };
+            // WebRTC Config with STUN servers
+            const rtcConfig = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            };
 
-        // Master Game Logic variables
-        let currentBpm = 100; // Master controls BPM
-        let bpmInterval; // Interval ID for sending BPM updates to player
-        let masterElapsedTime = 0;
-        let masterElapsedTimeInterval = null; // Interval ID for game timer
+            // Master Game Logic variables
+            let currentBpm = 100; // Master controls BPM
+            let bpmInterval; // Interval ID for sending BPM updates to player
+            let masterElapsedTime = 0;
+            let masterElapsedTimeInterval = null; // Interval ID for game timer
 
-        // DOM Elements
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const masterGameTimer = document.getElementById('masterGameTimer');
-        const masterBpmDisplay = document.getElementById('masterBpmDisplay');
-        const increaseBpmBtn = document.getElementById('increaseBpmBtn');
-        const decreaseBpmBtn = document.getElementById('decreaseBpmBtn');
-        const stopBpmBtn = document.getElementById('stopBpmBtn');
-        const playerArousalStatus = document.getElementById('playerArousalStatus');
-        const playerArousalBarForMaster = document.getElementById('playerArousalBarForMaster');
-        const playerRequestBox = document.getElementById('playerRequestBox');
-        const masterOkBtn = document.getElementById('masterOkBtn');
-        const masterNoBtn = document.getElementById('masterNoBtn');
-        const masterCumNowBtn = document.getElementById('masterCumNowBtn');
-        const masterDontTouchBtn = document.getElementById('masterDontTouchBtn');
-        const backToLobbyBtnMaster = document.getElementById('backToLobbyBtnMaster');
-        const masterOpenCameraBtn = document.getElementById('masterOpenCameraBtn');
-        const masterSwapCameraBtn = document.getElementById('masterSwapCameraBtn');
-        const masterStopCameraBtn = document.getElementById('masterStopCameraBtn');
-        const messageBox = document.getElementById('messageBox'); // For custom notifications
+            // DOM Elements
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const masterGameTimer = document.getElementById('masterGameTimer');
+            const masterBpmDisplay = document.getElementById('masterBpmDisplay');
+            const increaseBpmBtn = document.getElementById('increaseBpmBtn');
+            const decreaseBpmBtn = document.getElementById('decreaseBpmBtn');
+            const stopBpmBtn = document.getElementById('stopBpmBtn');
+            const playerArousalStatus = document.getElementById('playerArousalStatus');
+            const playerArousalBarForMaster = document.getElementById('playerArousalBarForMaster');
+            const playerRequestBox = document.getElementById('playerRequestBox');
+            const masterOkBtn = document.getElementById('masterOkBtn');
+            const masterNoBtn = document.getElementById('masterNoBtn');
+            const masterCumNowBtn = document.getElementById('masterCumNowBtn');
+            const masterDontTouchBtn = document.getElementById('masterDontTouchBtn');
+            const backToLobbyBtnMaster = document.getElementById('backToLobbyBtnMaster');
+            const masterOpenCameraBtn = document.getElementById('masterOpenCameraBtn');
+            const masterSwapCameraBtn = document.getElementById('masterSwapCameraBtn');
+            const masterStopCameraBtn = document.getElementById('masterStopCameraBtn');
+            const messageBox = document.getElementById('messageBox');
 
 
-        // Function to play sound (if needed for Master actions)
-        function playSound(soundFile) {
-            try {
-                const audio = new Audio(soundFile);
-                audio.volume = 0.5;
-                audio.play().catch(e => console.warn("Cannot play audio: ", e));
-            } catch (e) {
-                console.error("Error creating audio object:", e);
+            // Function to play sound (if needed for Master actions)
+            function playSound(soundFile) {
+                try {
+                    const audio = new Audio(soundFile);
+                    audio.volume = 0.5;
+                    audio.play().catch(e => console.warn("Cannot play audio: ", e));
+                } catch (e) {
+                    console.error("Error creating audio object:", e);
+                }
             }
-        }
 
-        // Function to display custom messages (consistent with other pages)
-        function showMessage(message, type = 'error') {
-            messageBox.textContent = message;
-            messageBox.className = 'message-box show'; // Reset classes and show
-            messageBox.classList.add(type); // Add specific type class for styling
-            setTimeout(() => {
-                messageBox.classList.remove('show');
-            }, 3000);
-        }
-
-        // Function to update BPM display and send to player
-        function updateMasterBpmDisplay() {
-            masterBpmDisplay.textContent = `BPM: ${currentBpm}`;
-            // Only send BPM if it's not 0 (stopped)
-            if (currentBpm > 0) {
-                socket.emit('masterCommand', { room: myRoom, type: 'bpm_update', bpm: currentBpm });
-                // Clear and restart the BPM interval for precise timing
-                if (bpmInterval) clearInterval(bpmInterval);
-                bpmInterval = setInterval(() => {
-                    // This interval will trigger the animation on player side.
-                    // Master just sends the BPM value.
-                }, 60000 / currentBpm); // Interval matches the BPM
-            } else {
-                // If BPM is 0, stop sending updates and clear interval
-                if (bpmInterval) clearInterval(bpmInterval);
-                bpmInterval = null;
-                socket.emit('masterCommand', { room: myRoom, type: 'bpm_stop', message: 'Master สั่งหยุด!' });
+            // Function to display custom messages (consistent with other pages)
+            function showMessage(message, type = 'error') {
+                messageBox.textContent = message;
+                messageBox.className = 'message-box show'; // Reset classes and show
+                messageBox.classList.add(type); // Add specific type class for styling
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                }, 3000);
             }
-        }
 
-        // Camera and WebRTC Functions (similar to player_game.html)
-        async function startCamera(facingMode = 'user') {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localVideo.srcObject = null;
+            // Function to update BPM display and send to player
+            function updateMasterBpmDisplay() {
+                masterBpmDisplay.textContent = `BPM: ${currentBpm}`;
+                // Only send BPM if it's not 0 (stopped)
+                if (currentBpm > 0) {
+                    socket.emit('masterCommand', { room: myRoom, type: 'bpm_update', bpm: currentBpm });
+                    // Clear and restart the BPM interval for precise timing
+                    if (bpmInterval) clearInterval(bpmInterval);
+                    bpmInterval = setInterval(() => {
+                        // This interval will trigger the animation on player side.
+                        // Master just sends the BPM value.
+                    }, 60000 / currentBpm); // Interval matches the BPM
+                } else {
+                    // If BPM is 0, stop sending updates and clear interval
+                    if (bpmInterval) clearInterval(bpmInterval);
+                    bpmInterval = null;
+                    socket.emit('masterCommand', { room: myRoom, type: 'bpm_stop', message: 'Master สั่งหยุด!' });
+                }
             }
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facingMode },
-                    audio: true // Master also needs to send audio
-                });
-                localVideo.srcObject = localStream;
-                localVideo.style.display = 'block';
-                currentFacingMode = facingMode;
-                showMessage("กล้องเปิดแล้ว", 'success');
 
-                if (peerConnection) {
+            // Camera and WebRTC Functions (similar to player_game.html)
+            async function startCamera(facingMode = 'user') {
+                console.log(`[Master] Attempting to start camera with facing mode: ${facingMode}`);
+                if (localStream) {
+                    console.log('[Master] Stopping existing local stream tracks.');
+                    localStream.getTracks().forEach(track => track.stop());
+                    localVideo.srcObject = null;
+                }
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: facingMode },
+                        audio: true // Master also needs to send audio
+                    });
+                    console.log('[Master] Got local stream:', localStream);
+                    localVideo.srcObject = localStream;
+                    localVideo.style.display = 'block';
+                    currentFacingMode = facingMode;
+                    showMessage("กล้องเปิดแล้ว", 'success');
+
+                    // Ensure tracks are added/replaced correctly in peerConnection
+                    if (peerConnection) {
+                        console.log('[Master] Peer connection exists, adding/replacing tracks.');
+                        const videoTrack = localStream.getVideoTracks()[0];
+                        const audioTrack = localStream.getAudioTracks()[0];
+
+                        if (videoTrack) {
+                            let existingVideoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                            if (existingVideoSender) {
+                                console.log('[Master] Replacing existing video track.');
+                                await existingVideoSender.replaceTrack(videoTrack);
+                                videoSender = existingVideoSender; // Update videoSender reference
+                            } else {
+                                console.log('[Master] Adding new video track.');
+                                videoSender = peerConnection.addTrack(videoTrack, localStream);
+                            }
+                        }
+                        if (audioTrack) {
+                            let existingAudioSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                            if (existingAudioSender) {
+                                console.log('[Master] Replacing existing audio track.');
+                                await existingAudioSender.replaceTrack(audioTrack);
+                            } else {
+                                console.log('[Master] Adding new audio track.');
+                                peerConnection.addTrack(audioTrack, localStream);
+                            }
+                        }
+                    } else {
+                        console.log('[Master] Peer connection not yet created when startCamera was called. Tracks will be added later.');
+                    }
+                } catch (e) {
+                    console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
+                    let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
+                    if (e.name === "NotAllowedError") {
+                        errorMessage += ": ไม่ได้รับอนุญาตให้ใช้กล้อง (โปรดตรวจสอบการอนุญาตของเบราว์เซอร์)";
+                    } else if (e.name === "NotFoundError") {
+                        errorMessage += ": ไม่พบอุปกรณ์กล้อง";
+                    } else {
+                        errorMessage += `: ${e.message}`;
+                    }
+                    showMessage(errorMessage, 'error');
+                }
+            }
+
+            function stopCamera() {
+                console.log('[Master] Stopping camera.');
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                    localVideo.srcObject = null;
+                    localVideo.style.display = 'none';
+                    showMessage("กล้องปิดแล้ว", 'info');
+
+                    // Remove tracks from peer connection if it exists
+                    if (peerConnection) {
+                        peerConnection.getSenders().forEach(sender => {
+                            if (sender.track && (sender.track.kind === 'video' || sender.track.kind === 'audio')) {
+                                peerConnection.removeTrack(sender);
+                                console.log(`[Master] Removed ${sender.track.kind} track from peer connection.`);
+                            }
+                        });
+                        videoSender = null; // Clear video sender reference
+                    }
+                }
+            }
+
+            async function switchCamera() {
+                console.log('[Master] Switching camera.');
+                const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+                await startCamera(newFacingMode);
+            }
+
+            // WebRTC Setup: Create Peer Connection
+            function createPeerConnection() {
+                if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    console.warn("[Master] Peer connection already exists and is not closed. Skipping creation.");
+                    return;
+                }
+
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                console.log("[Master] RTCPeerConnection created.");
+
+                // NEW: Add local stream tracks to peer connection if available immediately
+                // This ensures tracks are associated with the PC as soon as it's created.
+                if (localStream) {
+                    console.log('[Master] Local stream exists, adding tracks during peer connection creation.');
                     const videoTrack = localStream.getVideoTracks()[0];
                     const audioTrack = localStream.getAudioTracks()[0];
 
                     if (videoTrack) {
-                        if (videoSender && videoSender.track.kind === 'video') { // Check if sender is for video
-                            await videoSender.replaceTrack(videoTrack);
-                            console.log('Replaced video track in peer connection');
-                        } else {
-                            // Find existing video sender or add new one
-                            let existingVideoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                            if (existingVideoSender) {
-                                await existingVideoSender.replaceTrack(videoTrack);
-                                videoSender = existingVideoSender; // Update videoSender reference
-                            } else {
-                                videoSender = peerConnection.addTrack(videoTrack, localStream);
-                                console.log('Added video track for the first time to peer connection');
-                            }
-                        }
+                        videoSender = peerConnection.addTrack(videoTrack, localStream);
+                        console.log('[Master] Added initial video track to peer connection during creation.');
                     }
                     if (audioTrack) {
-                        let existingAudioSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                        if (existingAudioSender) {
-                             await existingAudioSender.replaceTrack(audioTrack);
-                        } else {
-                             peerConnection.addTrack(audioTrack, localStream);
-                             console.log('Added audio track for the first time to peer connection');
-                        }
+                        peerConnection.addTrack(audioTrack, localStream);
+                        console.log('[Master] Added initial audio track to peer connection during creation.');
                     }
-                }
-            } catch (e) {
-                console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
-                let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
-                if (e.name === "NotAllowedError") {
-                    errorMessage += ": ไม่ได้รับอนุญาตให้ใช้กล้อง (โปรดตรวจสอบการอนุญาตของเบราว์เซอร์)";
-                } else if (e.name === "NotFoundError") {
-                    errorMessage += ": ไม่พบอุปกรณ์กล้อง";
                 } else {
-                    errorMessage += `: ${e.message}`;
+                    console.log('[Master] Local stream not available during peer connection creation. Will add tracks when startCamera is called.');
                 }
-                showMessage(errorMessage, 'error');
-            }
-        }
 
-        function stopCamera() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-                localVideo.srcObject = null;
-                localVideo.style.display = 'none';
-                showMessage("กล้องปิดแล้ว", 'info');
-            }
-        }
-
-        async function switchCamera() {
-            const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-            await startCamera(newFacingMode);
-        }
-
-        // WebRTC Setup: Create Peer Connection
-        function createPeerConnection() {
-            if (peerConnection && peerConnection.connectionState !== 'closed') {
-                console.warn("Peer connection already exists and is not closed. Skipping creation.");
-                return;
-            }
-
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            console.log("RTCPeerConnection created.");
-
-            // Add local stream tracks to peer connection if available
-            if (localStream) {
-                // Ensure existing senders are reused or updated
-                localStream.getTracks().forEach(track => {
-                    let sender = peerConnection.getSenders().find(s => s.track && s.track.kind === track.kind);
-                    if (sender) {
-                        sender.replaceTrack(track);
-                        if (track.kind === 'video') videoSender = sender; // Update videoSender reference
-                    } else {
-                        const newSender = peerConnection.addTrack(track, localStream);
-                        if (track.kind === 'video') videoSender = newSender; // Store video sender
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('[Master] Sending ICE candidate:', event.candidate);
+                        socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom
                     }
-                });
-            }
+                };
 
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    console.log('Sending ICE candidate:', event.candidate);
-                    socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom
-                }
-            };
-
-            peerConnection.ontrack = (event) => {
-                if (remoteVideo.srcObject !== event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.style.display = 'block';
-                    showMessage('ได้รับสตรีมวิดีโอจาก Player แล้ว', 'success');
-                    console.log('Received remote stream from Player');
-                }
-            };
-
-            peerConnection.onconnectionstatechange = (event) => {
-                console.log('WebRTC connection state:', peerConnection.connectionState);
-                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
-                    showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
-                } else if (peerConnection.connectionState === 'connected') {
-                    showMessage('เชื่อมต่อ WebRTC กับ Player สำเร็จ!', 'success');
-                }
-            };
-
-            peerConnection.onsignalingstatechange = (event) => {
-                console.log('WebRTC signaling state:', peerConnection.signalingState);
-            };
-        }
-
-        // Socket.IO Listeners for WebRTC Signaling
-        socket.on('paired', async ({ role, room }) => {
-            showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
-            // Store room and role globally
-            myRoom = room;
-            myRole = role;
-
-            await startCamera(); // NEW: Master starts camera automatically when paired
-            createPeerConnection(); // Create peer connection when paired
-
-            // Master creates an offer and sends it to the player
-            if (myRole === 'master') {
-                try {
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    console.log('Sending WebRTC offer from Master:', offer);
-                    socket.emit('signal', { room: myRoom, sdp: offer }); // Pass myRoom
-                } catch (e) {
-                    console.error("Error creating or sending offer:", e);
-                    showMessage("เกิดข้อผิดพลาดในการเริ่ม WebRTC: " + e.message, 'error');
-                }
-            }
-        });
-
-        socket.on('signal', async (data) => {
-            // Ensure myRoom is set before processing signals
-            if (!myRoom && data.room) {
-                myRoom = data.room; // Try to get room from incoming signal if not set
-            }
-
-            if (!peerConnection || peerConnection.signalingState === 'closed') {
-                 await startCamera(); // Ensure camera/stream is ready before creating PC
-                 createPeerConnection();
-            }
-
-            if (data.sdp) {
-                console.log('Received SDP:', data.sdp.type);
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-
-                    if (data.sdp.type === 'answer') { // Master receives answer from Player
-                        console.log('Received answer from Player.');
-                        // No need to create another answer, just remote description is set
-                    } else if (data.sdp.type === 'offer') { // Master should not receive offer, but handle defensively
-                        console.warn('Received unexpected offer from Player.');
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom
-                        console.log('WebRTC answer sent (due to unexpected offer).');
+                peerConnection.ontrack = (event) => {
+                    console.log('[Master] Received remote track event:', event.streams);
+                    if (remoteVideo.srcObject !== event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.style.display = 'block'; // Ensure video element is visible
+                        showMessage('ได้รับสตรีมวิดีโอจาก Player แล้ว', 'success');
+                        console.log('[Master] Received remote stream from Player.');
                     }
-                } catch (e) {
-                    console.error("Error setting remote description or creating answer:", e);
-                    showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
+                };
+
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('[Master] WebRTC connection state:', peerConnection.connectionState);
+                    if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                        showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
+                    } else if (peerConnection.connectionState === 'connected') {
+                        showMessage('เชื่อมต่อ WebRTC กับ Player สำเร็จ!', 'success');
+                    }
+                };
+
+                peerConnection.onsignalingstatechange = (event) => {
+                    console.log('[Master] WebRTC signaling state:', peerConnection.signalingState);
+                };
+            }
+
+            // Socket.IO Listeners for WebRTC Signaling
+            socket.on('paired', async ({ role, room }) => {
+                console.log(`[Master] Paired event received: role=${role}, room=${room}`);
+                showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
+                // Store room and role globally
+                myRoom = room;
+                myRole = role;
+
+                createPeerConnection(); // 1. Create peer connection
+                await startCamera();    // 2. Get local stream and add tracks to peer connection
+
+                // Master creates an offer and sends it to the player
+                if (myRole === 'master') {
+                    console.log('[Master] Role is Master, attempting to create and send offer.');
+                    try {
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        console.log('[Master] Sending WebRTC offer from Master:', offer);
+                        socket.emit('signal', { room: myRoom, sdp: offer }); // Pass myRoom
+                    } catch (e) {
+                        console.error("[Master] Error creating or sending offer:", e);
+                        showMessage("เกิดข้อผิดพลาดในการเริ่ม WebRTC: " + e.message, 'error');
+                    }
                 }
-            } else if (data.candidate) {
-                console.log('Received ICE candidate:', data.candidate);
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) {
-                    console.error("Error adding ICE candidate:", e);
-                    showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`[Master] Signal received: type=${data.sdp ? data.sdp.type : 'candidate'}`);
+                // Ensure myRoom is set before processing signals
+                if (!myRoom && data.room) {
+                    myRoom = data.room; // Try to get room from incoming signal if not set
+                    console.log(`[Master] myRoom was not set, initialized from signal data: ${myRoom}`);
                 }
-            }
-        });
 
-        // Handle partner disconnected
-        socket.on('partnerDisconnected', (message) => {
-            showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
-            if (peerConnection && peerConnection.connectionState !== 'closed') {
-                peerConnection.close();
-                peerConnection = null;
-                videoSender = null;
-            }
-            stopCamera();
-            remoteVideo.srcObject = null;
-            remoteVideo.style.display = 'none';
-            if (masterElapsedTimeInterval) {
-                clearInterval(masterElapsedTimeInterval);
-                masterElapsedTimeInterval = null;
-            }
-            if (bpmInterval) {
-                clearInterval(bpmInterval);
-                bpmInterval = null;
-            }
-            // Reset BPM display and player arousal display
-            masterBpmDisplay.textContent = `BPM: 0`;
-            playerArousalStatus.textContent = `ความเงี่ยน Player: --/10`;
-            playerArousalBarForMaster.style.width = `0%`;
+                if (!peerConnection || peerConnection.signalingState === 'closed') {
+                    console.warn('[Master] PeerConnection not initialized or closed, recreating and starting camera.');
+                    createPeerConnection(); // Recreate PC if closed or not initialized
+                    await startCamera(); // Ensure camera/stream is ready after PC
+                }
 
-            setTimeout(() => {
-                window.location.href = '/lobby.html';
-            }, 3000);
-        });
+                if (data.sdp) {
+                    console.log('[Master] Received SDP:', data.sdp.type);
+                    try {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
+                        if (data.sdp.type === 'answer') { // Master receives answer from Player
+                            console.log('[Master] Received answer from Player.');
+                            // No need to create another answer, just remote description is set
+                        } else if (data.sdp.type === 'offer') { // Master should not receive offer from Player initially, but handle defensively
+                            console.warn('[Master] Received unexpected offer from Player. Creating answer.');
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom
+                            console.log('[Master] WebRTC answer sent (due to unexpected offer).');
+                        }
+                    } catch (e) {
+                        console.error("[Master] Error setting remote description or creating answer:", e);
+                        showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
+                    }
+                } else if (data.candidate) {
+                    console.log('[Master] Received ICE candidate:', data.candidate);
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (e) {
+                        console.error("[Master] Error adding ICE candidate:", e);
+                        showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
+                    }
+                }
+            });
+
+            // Handle partner disconnected
+            socket.on('partnerDisconnected', (message) => {
+                console.log('[Master] Partner disconnected event received.');
+                showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
+                if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    peerConnection.close();
+                    peerConnection = null;
+                    videoSender = null;
+                }
+                stopCamera(); // Ensure local camera is off
+                remoteVideo.srcObject = null;
+                remoteVideo.style.display = 'none'; // Hide remote video
+                if (masterElapsedTimeInterval) {
+                    clearInterval(masterElapsedTimeInterval);
+                    masterElapsedTimeInterval = null;
+                }
+                if (bpmInterval) {
+                    clearInterval(bpmInterval);
+                    bpmInterval = null;
+                }
+                // Reset BPM display and player arousal display
+                currentBpm = 0; // Set BPM to 0 on disconnect
+                masterBpmDisplay.textContent = `BPM: 0`;
+                playerArousalStatus.textContent = `ความเงี่ยน Player: --/10`;
+                playerArousalBarForMaster.style.width = `0%`;
+
+                setTimeout(() => {
+                    window.location.href = '/lobby.html';
+                }, 3000);
+            });
 
 
-        // --- Event Listeners for DOM elements ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // NEW: Initialize myRoom and myRole from URL parameters on page load
+            // --- Event Listeners for DOM elements ---
+            console.log('[Master] DOM Content Loaded.');
+            // Initialize myRoom and myRole from URL parameters on page load
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('room') && urlParams.has('role')) {
                 myRoom = parseInt(urlParams.get('room'));
                 myRole = urlParams.get('role');
-                console.log(`Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+                console.log(`[Master] Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+            } else {
+                console.log('[Master] No room/role in URL. Assuming fresh load or direct access.');
             }
 
             updateMasterBpmDisplay(); // Initial display update
@@ -728,14 +760,16 @@
             });
 
             backToLobbyBtnMaster.addEventListener('click', () => {
+                console.log('[Master] Back to Lobby button clicked.');
                 showMessage("กำลังกลับสู่ล็อบบี้...", 'info');
-                socket.emit('leaveRoom');
+                socket.emit('leaveRoom'); // Inform server that Master is leaving the room
                 if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    console.log('[Master] Closing peer connection on leave.');
                     peerConnection.close();
                     peerConnection = null;
                     videoSender = null;
                 }
-                stopCamera();
+                stopCamera(); // Ensure local camera is off
                 remoteVideo.srcObject = null;
                 remoteVideo.style.display = 'none';
                 if (masterElapsedTimeInterval) {
@@ -746,38 +780,17 @@
                     clearInterval(bpmInterval);
                     bpmInterval = null;
                 }
+                // Reset BPM display and player arousal display on client side immediately
+                currentBpm = 0;
+                masterBpmDisplay.textContent = `BPM: 0`;
+                playerArousalStatus.textContent = `ความเงี่ยน Player: --/10`;
+                playerArousalBarForMaster.style.width = `0%`;
+
                 setTimeout(() => {
                     window.location.href = '/lobby.html';
-                }, 1500);
+                }, 1500); // Redirect after message
             });
-        });
-
-        // Socket.IO Listeners for commands from Player
-        socket.on('playerCommand', (data) => {
-            console.log("Master received command from Player:", data);
-            playerRequestBox.textContent = data.message;
-            showMessage(`ได้รับคำขอ: ${data.message}`, 'info');
-            // Clear message after a short delay
-            setTimeout(() => {
-                playerRequestBox.textContent = 'รอคำขอจาก Player...';
-            }, 5000);
-        });
-
-        // Socket.IO Listener for Player's Arousal Update
-        socket.on('playerArousalUpdate', (arousalLevel) => {
-            console.log("Master received Player Arousal Update:", arousalLevel);
-            playerArousalStatus.textContent = `ความเงี่ยน Player: ${arousalLevel}/10`;
-            playerArousalBarForMaster.style.width = `${(arousalLevel / 10) * 100}%`;
-        });
-
-        // Handle initial connection or reconnection
-        socket.on('connect', () => {
-            console.log('Master connected to Socket.IO server.');
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Master disconnected from Socket.IO server.');
-        });
+        }); // End of DOMContentLoaded
     </script>
 </body>
 </html>
