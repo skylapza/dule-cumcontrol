@@ -9,33 +9,33 @@
     <link rel="stylesheet" href="/game_styles.css"> <!-- Link to external CSS, assuming it exists -->
     <style>
         /* ************************************************* */
-        /* Custom styles for master_control.html */
+        /* Custom styles for master_control.html to emphasize camera */
+        /* and center everything */
         /* ************************************************* */
 
-        /* Override body styles for consistent background and centering */
         body {
-            font-family: 'Inter', sans-serif; /* Consistent font with other pages */
-            background: linear-gradient(135deg, #1a0033, #32004d, #4d0066); /* Consistent gradient */
-            color: #e0e0e0; /* Softer white */
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a0033, #32004d, #4d0066);
+            color: #e0e0e0;
             display: flex;
-            flex-direction: column; /* Ensure content stacks vertically */
-            justify-content: center; /* Center vertically */
-            align-items: center; /* Center horizontally */
-            min-height: 100vh; /* Ensure full viewport height */
-            padding: 20px; /* Add padding for overall content */
-            margin: 0; /* Remove body margin */
-            overflow-x: hidden; /* Prevent horizontal scrolling */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+            overflow-x: hidden;
         }
 
         .game-area-container.master-area {
-            max-width: 900px; /* Max width of the Master game area */
-            padding: 20px; /* Reduced padding */
-            gap: 15px; /* Reduced spacing between elements */
-            background: rgba(46, 46, 46, 0.8); /* Consistent background with lobby rooms */
-            border-radius: 15px; /* Rounded corners */
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Deep shadow */
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
-            width: 100%; /* Take full width on smaller screens */
+            max-width: 900px;
+            padding: 20px;
+            gap: 15px;
+            background: rgba(46, 46, 46, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
         }
 
         h1 {
@@ -45,14 +45,13 @@
             margin-bottom: 20px;
         }
 
-        /* Style for the video elements to be responsive and larger */
-        .video-display-area { /* Container for local and remote videos */
+        .all-videos-container {
             display: flex;
-            flex-direction: column; /* Stack videos vertically by default */
-            justify-content: center; /* Center videos */
-            align-items: center; /* Center videos horizontally */
-            gap: 1.5rem; /* Space between videos */
-            width: 100%; /* Use full width */
+            flex-direction: column; /* Stacks remote and local video sections */
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem; /* Space between video sections */
+            width: 100%;
             margin-bottom: 1.5rem;
         }
 
@@ -61,29 +60,17 @@
             max-width: 450px; /* Limit max width for each video */
             height: auto; /* Maintain aspect ratio */
             aspect-ratio: 16 / 9;
-            background-color: #2a3547; /* Darker grey background */
-            border-radius: 0.75rem; /* Rounded corners (rounded-lg) */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* Prominent shadow */
-            object-fit: cover; /* Cover video area */
-            border: 2px solid #60a5fa; /* Blue border */
+            background-color: #2a3547;
+            border-radius: 0.75rem;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+            object-fit: cover;
+            border: 2px solid #60a5fa;
             display: none; /* Hide video elements by default */
         }
 
-        /* Responsive adjustments for videos */
-        @media (min-width: 768px) {
-            .video-display-area {
-                flex-direction: row; /* Arrange videos side-by-side on larger screens */
-                justify-content: space-around; /* Distribute space evenly */
-                gap: 2rem;
-            }
-            .video-element {
-                max-width: 45%; /* Adjust width to fit two videos side by side */
-            }
-        }
         @media (max-width: 767px) {
             .video-element {
-                width: 100%; /* Full width of video-display-area */
-                max-width: 450px; /* Max width to prevent excessive size */
+                max-width: 100%; /* Full width on smaller screens */
             }
         }
 
@@ -91,7 +78,7 @@
         button {
             padding: 0.8rem 1.6rem;
             font-size: 1rem;
-            border-radius: 0.75rem; /* Consistent rounded corners */
+            border-radius: 0.75rem;
             transition: all 0.3s ease;
             font-weight: 600;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
@@ -114,105 +101,136 @@
 
         /* Camera control buttons */
         .camera-controls button {
-            padding: 0.6rem 1.2rem; /* Adjusted padding */
-            font-size: 0.95rem; /* Adjusted font size */
-            border-radius: 0.6rem; /* Adjusted rounded corners */
+            padding: 0.6rem 1.2rem;
+            font-size: 0.95rem;
+            border-radius: 0.6rem;
         }
 
         /* Timer text */
         #masterGameTimer {
-            font-size: 1.2rem; /* Adjusted font size */
+            font-size: 1.2rem;
             margin-bottom: 1rem;
-            color: #b3e0ff; /* Consistent color with lobby */
+            color: #b3e0ff;
             font-weight: 600;
         }
 
-        /* BPM display */
-        .master-bpm-display-group,
-        .arousal-display-group {
-            margin: 1.5rem auto; /* Center horizontally, adjusted top/bottom margin */
-            max-width: 400px; /* Increased max-width */
-            width: 90%; /* Use more width on smaller screens */
-            background: rgba(30, 30, 30, 0.6); /* Slightly darker background */
+        /* BPM control group */
+        .bpm-control-group {
+            margin: 1.5rem auto;
+            max-width: 400px;
+            width: 90%;
+            background: rgba(30, 30, 30, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #masterBpmDisplay {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #90ee90; /* Light green */
+            margin-bottom: 0.5rem;
+        }
+        .bpm-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            width: 100%;
+        }
+        .bpm-buttons button {
+            flex-grow: 1; /* Allow buttons to grow */
+            max-width: 150px; /* Limit button width */
+            padding: 0.6rem 1rem;
+            font-size: 0.9em;
+            border-radius: 0.6rem;
+        }
+        #increaseBpmBtn { background-color: #28a745; } /* Green */
+        #decreaseBpmBtn { background-color: #ffc107; } /* Yellow */
+        #stopBpmBtn { background-color: #dc3545; } /* Red */
+
+        /* Player Arousal Display on Master's screen */
+        .player-arousal-group {
+            margin: 1.5rem auto;
+            max-width: 400px;
+            width: 90%;
+            background: rgba(30, 30, 30, 0.6);
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
-        .master-bpm-display-group div,
-        .arousal-display-group div {
-            margin-bottom: 0.5rem;
-        }
-        #masterBpmDisplay,
-        #masterArousalDisplay {
+        #playerArousalStatus {
             font-size: 1.1em;
             font-weight: 700;
-            color: #ffeb3b; /* Yellow for BPM */
+            color: #ff5252;
         }
-        #masterArousalDisplay {
-            color: #ff5252; /* Red for Arousal */
-        }
-        .master-bpm-bar-container,
         .arousal-bar-container {
-            height: 1.2rem; /* Slightly taller bar */
+            height: 1.2rem;
             margin-top: 0.6rem;
-            background-color: #4a4a4a; /* Darker track */
+            background-color: #4a4a4a;
             border-radius: 0.6rem;
         }
-        #masterBpmBar {
-            background-color: #9c27b0; /* Deeper purple */
+        #playerArousalBarForMaster {
+            background-color: #f44336;
         }
-        #masterArousalBar {
-            background-color: #f44336; /* Vibrant red */
-        }
-        .master-bpm-buttons button,
-        .arousal-buttons button {
-            padding: 0.6rem 1rem;
-            font-size: 0.9em;
-            border-radius: 0.6rem;
-            margin: 0.2rem; /* Add small margin for button spacing */
-        }
-        .master-bpm-max-label,
         .arousal-max-label {
             font-size: 0.8rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.8);
         }
 
-        /* Master action buttons */
-        .master-action-group {
+
+        /* Master Command Buttons */
+        .master-controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Two columns */
+            gap: 1rem; /* Space between buttons */
+            margin: 1.5rem auto;
+            max-width: 600px;
+            width: 100%;
+            padding: 0 10px; /* Add some horizontal padding */
+        }
+        @media (max-width: 480px) {
+            .master-controls-grid {
+                grid-template-columns: 1fr; /* Single column on very small screens */
+            }
+        }
+        .master-controls-grid button {
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 0.75rem;
+            text-align: center;
+        }
+        #masterOkBtn { background-color: #007bff; } /* Blue */
+        #masterNoBtn { background-color: #ffc107; } /* Yellow */
+        #masterCumNowBtn { background-color: #28a745; } /* Green */
+        #masterDontTouchBtn { background-color: #dc3545; } /* Red */
+
+
+        /* Player Request Display on Master's screen */
+        #playerRequestBox {
+            background-color: rgba(60, 60, 60, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 1.5rem;
+            min-height: 50px;
             display: flex;
             justify-content: center;
-            flex-wrap: wrap;
-            gap: 1rem; /* Increased gap */
-            margin: 1.5rem auto;
-            max-width: 600px; /* Increased max width for more buttons */
-        }
-        .master-action-group button {
-            padding: 0.8rem 1.6rem; /* Consistent button size */
-            font-size: 1.1rem; /* Slightly larger text */
-            border-radius: 0.75rem;
-            min-width: 120px; /* Ensure minimum width for buttons */
-        }
-        .master-control-btn.cum-now-btn {
-            background-color: #1a9e4d; /* Darker green */
-            transition: background-color 0.3s ease;
-        }
-        .master-control-btn.cum-now-btn:hover {
-            background-color: #24b860;
-        }
-        .master-control-btn.dont-touch-btn {
-            background-color: #d97706; /* Darker orange */
-            transition: background-color 0.3s ease;
-        }
-        .master-control-btn.dont-touch-btn:hover {
-            background-color: #fb923c;
+            align-items: center;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #ffeb3b; /* Yellow for requests */
+            text-shadow: 0 0 5px rgba(255, 235, 59, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
         }
 
-        /* Notification area (consistent with lobby) */
+        /* Notification area (consistent with lobby and player_game) */
         #messageBox {
             margin-top: 20px;
             padding: 15px;
-            background-color: rgba(255, 0, 0, 0.3); /* Reddish for error */
+            background-color: rgba(255, 0, 0, 0.3);
             border-radius: 8px;
             color: white;
             font-size: 1em;
@@ -223,29 +241,29 @@
             transition: opacity 0.4s ease, visibility 0.4s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             text-align: center;
-            z-index: 1000; /* Ensure it's on top */
-            position: fixed; /* Fixed position */
-            top: 20px; /* From top */
-            left: 50%; /* Center horizontally */
-            transform: translateX(-50%); /* Adjust for perfect centering */
+            z-index: 1000;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
         }
         #messageBox.show {
             opacity: 1;
             visibility: visible;
         }
         #messageBox.success {
-            background-color: rgba(0, 128, 0, 0.3); /* Greenish for success */
+            background-color: rgba(0, 128, 0, 0.3);
         }
         #messageBox.info {
-            background-color: rgba(0, 100, 200, 0.3); /* Bluish for info */
+            background-color: rgba(0, 100, 200, 0.3);
         }
 
         /* Back to Lobby button */
         #backToLobbyBtnMaster {
-            background-color: #4a5568; /* Darker gray for subtle look */
+            background-color: #4a5568;
             color: #cbd5e0;
-            border-bottom: 1px solid #718096; /* Subtle underline effect */
-            text-decoration: none; /* Remove default underline */
+            border-bottom: 1px solid #718096;
+            text-decoration: none;
             padding: 0.6rem 1.2rem;
             font-size: 0.95rem;
             margin-top: 2rem;
@@ -257,10 +275,10 @@
         }
 
         /* Headings above videos */
-        .video-display-area h3 {
+        .video-label-container {
             text-align: center;
             margin-bottom: 0.5rem;
-            color: #b3e0ff; /* Light blue for video titles */
+            color: #b3e0ff;
             font-weight: 600;
         }
     </style>
@@ -270,6 +288,7 @@
 
     <div class="max-w-2xl game-area-container master-area">
         <h1 class="text-3xl font-bold text-center mb-4">Master</h1>
+
         <p id="masterGameTimer" class="text-lg">เวลาเล่น: 00:00</p>
 
         <div class="flex justify-center gap-4 my-4 camera-controls">
@@ -278,46 +297,46 @@
             <button id="masterStopCameraBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">ปิดกล้อง</button>
         </div>
 
-        <div class="video-display-area">
+        <div class="all-videos-container">
+            <!-- Remote Video (Player's camera) -->
             <div>
-                <h3>กล้อง Player</h3>
+                <h3 class="video-label-container">กล้อง Player</h3>
                 <video id="remoteVideo" class="video-element" autoplay playsinline></video>
             </div>
+
+            <!-- Local Video (Your camera) -->
             <div>
-                <h3>กล้องของคุณ</h3>
+                <h3 class="video-label-container">กล้องของคุณ</h3>
                 <video id="localVideo" class="video-element" autoplay playsinline muted></video>
             </div>
         </div>
 
-        <!-- Master's command buttons -->
-        <div class="master-action-group">
-            <button id="masterOkBtn" class="bg-blue-600 hover:bg-blue-700 master-control-btn">Ok ✅</button>
-            <button id="masterNoBtn" class="bg-red-600 hover:bg-red-700 master-control-btn">No ❌</button>
-            <button id="masterCumNowBtn" class="bg-green-600 hover:bg-green-700 master-control-btn cum-now-btn">Cum Now 💦</button>
-            <button id="masterDontTouchBtn" class="bg-orange-600 hover:bg-orange-700 master-control-btn dont-touch-btn">Don't Touch 🚫</button>
-        </div>
-
-        <!-- Master's BPM Gauge -->
-        <div class="text-center master-bpm-display-group">
-            <div id="masterBpmDisplay">BPM: 120</div>
-            <div class="w-full h-5 rounded relative overflow-hidden master-bpm-bar-container">
-                <div id="masterBpmBar" class="h-full transition-all duration-300" style="width: 50%;"></div>
-                <span class="absolute right-2 top-1/2 -translate-y-1/2 master-bpm-max-label">MAX</span>
-            </div>
-            <div class="flex justify-center gap-4 master-bpm-buttons">
-                <button id="decreaseBpmBtn" class="bg-yellow-500 hover:bg-yellow-600">ลดความเร็ว</button>
-                <button id="increaseBpmBtn" class="bg-green-500 hover:bg-green-600">เพิ่มความเร็ว</button>
-                <button id="stopBpmBtn" class="bg-gray-700 hover:bg-gray-600">หยุด/เริ่ม</button>
+        <div class="text-center mb-6 bpm-control-group">
+            <div id="masterBpmDisplay" class="text-2xl font-bold">BPM: 100</div>
+            <div class="flex justify-center gap-4 bpm-buttons">
+                <button id="decreaseBpmBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded">ลดความเร็ว</button>
+                <button id="increaseBpmBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded">เพิ่มความเร็ว</button>
+                <button id="stopBpmBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">หยุด/เริ่ม</button>
             </div>
         </div>
 
-        <!-- Master's view of Player's Arousal -->
-        <div class="text-center arousal-display-group">
-            <div id="masterArousalDisplay">ความเงี่ยนของ Player: 5/10</div>
-            <div class="w-full h-5 rounded relative overflow-hidden arousal-bar-container">
-                <div id="masterArousalBar" class="h-full transition-all duration-300" style="width: 50%;"></div>
-                <span class="absolute right-2 top-1/2 -translate-y-1/2 arousal-max-label">CUM</span>
+        <div class="text-center mb-6 player-arousal-group">
+            <div id="playerArousalStatus" class="text-lg font-bold">ความเงี่ยน Player: 5/10</div>
+            <div class="w-full bg-gray-600 h-5 rounded relative overflow-hidden my-2 arousal-bar-container">
+                <div id="playerArousalBarForMaster" class="bg-red-500 h-full transition-all duration-300" style="width: 50%"></div>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs arousal-max-label">CUM</span>
             </div>
+        </div>
+
+        <div id="playerRequestBox" class="text-center font-bold text-yellow-400 my-4">
+            รอคำขอจาก Player...
+        </div>
+
+        <div class="master-controls-grid">
+            <button id="masterOkBtn" class="bg-blue-500 hover:bg-blue-600 rounded">OK</button>
+            <button id="masterNoBtn" class="bg-yellow-500 hover:bg-yellow-600 rounded">NO</button>
+            <button id="masterCumNowBtn" class="bg-green-500 hover:bg-green-600 rounded">CUM NOW</button>
+            <button id="masterDontTouchBtn" class="bg-red-500 hover:bg-red-600 rounded">DON'T TOUCH!</button>
         </div>
 
         <div class="text-center mt-8">
@@ -330,17 +349,29 @@
         // Global socket connection
         const socket = io();
 
-        // WebRTC related variables
+        // Global variables for WebRTC and game state
         let peerConnection;
         let localStream;
         let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
         let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
+        let myRoom; // NEW: Global variable for current room
+        let myRole; // NEW: Global variable for current role
+
+        // WebRTC Config with STUN servers
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ]
+        };
 
         // Master Game Logic variables
-        let masterBpmLevel = 5; // Master's BPM gauge level (1-10)
-        const bpmLevels = [60, 80, 100, 120, 140, 160, 180, 200, 240, 280]; // Corresponding BPM values
-        const maxBpmLevel = 10;
-        let isBpmStopped = false; // New state variable to track if BPM is stopped
+        let currentBpm = 100; // Master controls BPM
+        let bpmInterval; // Interval ID for sending BPM updates to player
+        let masterElapsedTime = 0;
         let masterElapsedTimeInterval = null; // Interval ID for game timer
 
         // DOM Elements
@@ -348,16 +379,16 @@
         const remoteVideo = document.getElementById('remoteVideo');
         const masterGameTimer = document.getElementById('masterGameTimer');
         const masterBpmDisplay = document.getElementById('masterBpmDisplay');
-        const masterBpmBar = document.getElementById('masterBpmBar');
         const increaseBpmBtn = document.getElementById('increaseBpmBtn');
         const decreaseBpmBtn = document.getElementById('decreaseBpmBtn');
         const stopBpmBtn = document.getElementById('stopBpmBtn');
+        const playerArousalStatus = document.getElementById('playerArousalStatus');
+        const playerArousalBarForMaster = document.getElementById('playerArousalBarForMaster');
+        const playerRequestBox = document.getElementById('playerRequestBox');
         const masterOkBtn = document.getElementById('masterOkBtn');
         const masterNoBtn = document.getElementById('masterNoBtn');
         const masterCumNowBtn = document.getElementById('masterCumNowBtn');
         const masterDontTouchBtn = document.getElementById('masterDontTouchBtn');
-        const masterArousalDisplay = document.getElementById('masterArousalDisplay');
-        const masterArousalBar = document.getElementById('masterArousalBar');
         const backToLobbyBtnMaster = document.getElementById('backToLobbyBtnMaster');
         const masterOpenCameraBtn = document.getElementById('masterOpenCameraBtn');
         const masterSwapCameraBtn = document.getElementById('masterSwapCameraBtn');
@@ -365,75 +396,90 @@
         const messageBox = document.getElementById('messageBox'); // For custom notifications
 
 
-        // Function to display custom messages (consistent with lobby.html)
+        // Function to play sound (if needed for Master actions)
+        function playSound(soundFile) {
+            try {
+                const audio = new Audio(soundFile);
+                audio.volume = 0.5;
+                audio.play().catch(e => console.warn("Cannot play audio: ", e));
+            } catch (e) {
+                console.error("Error creating audio object:", e);
+            }
+        }
+
+        // Function to display custom messages (consistent with other pages)
         function showMessage(message, type = 'error') {
             messageBox.textContent = message;
             messageBox.className = 'message-box show'; // Reset classes and show
             messageBox.classList.add(type); // Add specific type class for styling
-            // Hide message after a few seconds
             setTimeout(() => {
                 messageBox.classList.remove('show');
-                // Remove type class after hiding to reset for next message
-                messageBox.classList.remove(type);
             }, 3000);
         }
 
-        // Function to update the display for Master's BPM gauge
+        // Function to update BPM display and send to player
         function updateMasterBpmDisplay() {
-            const currentBpm = bpmLevels[masterBpmLevel - 1];
-            if (masterBpmDisplay) {
-                masterBpmDisplay.textContent = `BPM: ${isBpmStopped ? 'หยุด' : currentBpm}`;
-            }
-            if (masterBpmBar) {
-                const percentage = (masterBpmLevel / maxBpmLevel) * 100;
-                masterBpmBar.style.width = `${percentage}%`;
-            }
-            // Emit BPM update to Player via Socket.IO
-            if (!isBpmStopped) {
-                socket.emit('masterCommand', { type: 'bpm_update', bpm: currentBpm });
+            masterBpmDisplay.textContent = `BPM: ${currentBpm}`;
+            // Only send BPM if it's not 0 (stopped)
+            if (currentBpm > 0) {
+                socket.emit('masterCommand', { room: myRoom, type: 'bpm_update', bpm: currentBpm });
+                // Clear and restart the BPM interval for precise timing
+                if (bpmInterval) clearInterval(bpmInterval);
+                bpmInterval = setInterval(() => {
+                    // This interval will trigger the animation on player side.
+                    // Master just sends the BPM value.
+                }, 60000 / currentBpm); // Interval matches the BPM
             } else {
-                socket.emit('masterCommand', { type: 'bpm_stop', message: 'Master: Stop!' }); // Ensure Player knows BPM stopped
+                // If BPM is 0, stop sending updates and clear interval
+                if (bpmInterval) clearInterval(bpmInterval);
+                bpmInterval = null;
+                socket.emit('masterCommand', { room: myRoom, type: 'bpm_stop', message: 'Master สั่งหยุด!' });
             }
         }
 
-        // Function to update the display for Master's arousal (Player's arousal)
-        function updateMasterArousalDisplay(arousalLevel) {
-            if (masterArousalDisplay) {
-                masterArousalDisplay.textContent = `ความเงี่ยนของ Player: ${arousalLevel}/10`;
-            }
-            if (masterArousalBar) {
-                const percentage = (arousalLevel / 10) * 100;
-                masterArousalBar.style.width = `${percentage}%`;
-            }
-        }
-
-        // Camera and WebRTC Functions
+        // Camera and WebRTC Functions (similar to player_game.html)
         async function startCamera(facingMode = 'user') {
-            // Stop any existing tracks before getting new stream
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
-                localVideo.srcObject = null; // Clear existing stream from video element
+                localVideo.srcObject = null;
             }
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: facingMode },
-                    audio: false // Master does not need to send audio
+                    audio: true // Master also needs to send audio
                 });
                 localVideo.srcObject = localStream;
-                localVideo.style.display = 'block'; // Show local video when stream starts
-                currentFacingMode = facingMode; // Update current facing mode
+                localVideo.style.display = 'block';
+                currentFacingMode = facingMode;
                 showMessage("กล้องเปิดแล้ว", 'success');
 
-                // Add or replace tracks in the peer connection
                 if (peerConnection) {
                     const videoTrack = localStream.getVideoTracks()[0];
+                    const audioTrack = localStream.getAudioTracks()[0];
+
                     if (videoTrack) {
-                        if (videoSender) { // If a sender already exists, replace the track
+                        if (videoSender && videoSender.track.kind === 'video') { // Check if sender is for video
                             await videoSender.replaceTrack(videoTrack);
                             console.log('Replaced video track in peer connection');
-                        } else { // First time adding video track to this peer connection
-                            videoSender = peerConnection.addTrack(videoTrack, localStream);
-                            console.log('Added video track for the first time to peer connection');
+                        } else {
+                            // Find existing video sender or add new one
+                            let existingVideoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                            if (existingVideoSender) {
+                                await existingVideoSender.replaceTrack(videoTrack);
+                                videoSender = existingVideoSender; // Update videoSender reference
+                            } else {
+                                videoSender = peerConnection.addTrack(videoTrack, localStream);
+                                console.log('Added video track for the first time to peer connection');
+                            }
+                        }
+                    }
+                    if (audioTrack) {
+                        let existingAudioSender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                        if (existingAudioSender) {
+                             await existingAudioSender.replaceTrack(audioTrack);
+                        } else {
+                             peerConnection.addTrack(audioTrack, localStream);
+                             console.log('Added audio track for the first time to peer connection');
                         }
                     }
                 }
@@ -456,7 +502,7 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
                 localVideo.srcObject = null;
-                localVideo.style.display = 'none'; // Hide local video when stopped
+                localVideo.style.display = 'none';
                 showMessage("กล้องปิดแล้ว", 'info');
             }
         }
@@ -468,60 +514,54 @@
 
         // WebRTC Setup: Create Peer Connection
         function createPeerConnection() {
-            // Check if peerConnection already exists to prevent re-creation
             if (peerConnection && peerConnection.connectionState !== 'closed') {
                 console.warn("Peer connection already exists and is not closed. Skipping creation.");
                 return;
             }
 
-            peerConnection = new RTCPeerConnection({
-                // Add ICE servers here for STUN/TURN (critical for real-world scenarios)
-                // For example:
-                // iceServers: [
-                //     { urls: 'stun:stun.l.google.com:19302' },
-                //     { urls: 'turn:YOUR_TURN_SERVER_URL', username: 'YOUR_USERNAME', credential: 'YOUR_PASSWORD' }
-                // ]
-            });
+            peerConnection = new RTCPeerConnection(rtcConfig);
             console.log("RTCPeerConnection created.");
 
             // Add local stream tracks to peer connection if available
             if (localStream) {
-                const videoTrack = localStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    videoSender = peerConnection.addTrack(videoTrack, localStream); // Store sender for replaceTrack
-                }
+                // Ensure existing senders are reused or updated
+                localStream.getTracks().forEach(track => {
+                    let sender = peerConnection.getSenders().find(s => s.track && s.track.kind === track.kind);
+                    if (sender) {
+                        sender.replaceTrack(track);
+                        if (track.kind === 'video') videoSender = sender; // Update videoSender reference
+                    } else {
+                        const newSender = peerConnection.addTrack(track, localStream);
+                        if (track.kind === 'video') videoSender = newSender; // Store video sender
+                    }
+                });
             }
 
-            // Event: When an ICE candidate is generated (for NAT traversal)
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
                     console.log('Sending ICE candidate:', event.candidate);
-                    socket.emit('signal', { candidate: event.candidate });
+                    socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom
                 }
             };
 
-            // Event: When remote tracks are received from the other peer
             peerConnection.ontrack = (event) => {
                 if (remoteVideo.srcObject !== event.streams[0]) {
                     remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.style.display = 'block'; // Show remote video when stream is received
+                    remoteVideo.style.display = 'block';
                     showMessage('ได้รับสตรีมวิดีโอจาก Player แล้ว', 'success');
-                    console.log('Received remote stream');
+                    console.log('Received remote stream from Player');
                 }
             };
 
-            // Handle connection state changes
             peerConnection.onconnectionstatechange = (event) => {
                 console.log('WebRTC connection state:', peerConnection.connectionState);
                 if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
-                    // Potentially trigger a reconnect or return to lobby
                 } else if (peerConnection.connectionState === 'connected') {
                     showMessage('เชื่อมต่อ WebRTC กับ Player สำเร็จ!', 'success');
                 }
             };
 
-            // Handle signaling state changes
             peerConnection.onsignalingstatechange = (event) => {
                 console.log('WebRTC signaling state:', peerConnection.signalingState);
             };
@@ -530,46 +570,61 @@
         // Socket.IO Listeners for WebRTC Signaling
         socket.on('paired', async ({ role, room }) => {
             showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
+            // Store room and role globally
+            myRoom = room;
+            myRole = role;
+
+            await startCamera(); // NEW: Master starts camera automatically when paired
             createPeerConnection(); // Create peer connection when paired
 
-            // Master should initiate the offer
-            try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('signal', { sdp: offer });
-                console.log('WebRTC offer sent.');
-            } catch (e) {
-                console.error("Error creating offer:", e);
-                showMessage("เกิดข้อผิดพลาดในการสร้างข้อเสนอ WebRTC", 'error');
+            // Master creates an offer and sends it to the player
+            if (myRole === 'master') {
+                try {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    console.log('Sending WebRTC offer from Master:', offer);
+                    socket.emit('signal', { room: myRoom, sdp: offer }); // Pass myRoom
+                } catch (e) {
+                    console.error("Error creating or sending offer:", e);
+                    showMessage("เกิดข้อผิดพลาดในการเริ่ม WebRTC: " + e.message, 'error');
+                }
             }
         });
 
         socket.on('signal', async (data) => {
+            // Ensure myRoom is set before processing signals
+            if (!myRoom && data.room) {
+                myRoom = data.room; // Try to get room from incoming signal if not set
+            }
+
             if (!peerConnection || peerConnection.signalingState === 'closed') {
-                createPeerConnection(); // Recreate if closed or not initialized
+                 await startCamera(); // Ensure camera/stream is ready before creating PC
+                 createPeerConnection();
             }
 
             if (data.sdp) {
+                console.log('Received SDP:', data.sdp.type);
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    if (data.sdp.type === 'answer') {
-                        console.log('Received answer from Player');
-                    } else if (data.sdp.type === 'offer') {
-                        // If Master receives an offer (this can happen if Player initiates)
-                        console.log('Received offer from Player, creating answer...');
+
+                    if (data.sdp.type === 'answer') { // Master receives answer from Player
+                        console.log('Received answer from Player.');
+                        // No need to create another answer, just remote description is set
+                    } else if (data.sdp.type === 'offer') { // Master should not receive offer, but handle defensively
+                        console.warn('Received unexpected offer from Player.');
                         const answer = await peerConnection.createAnswer();
                         await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal', { sdp: answer });
-                        console.log('WebRTC answer sent.');
+                        socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom
+                        console.log('WebRTC answer sent (due to unexpected offer).');
                     }
                 } catch (e) {
                     console.error("Error setting remote description or creating answer:", e);
                     showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
                 }
             } else if (data.candidate) {
+                console.log('Received ICE candidate:', data.candidate);
                 try {
                     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    console.log('Added ICE candidate');
                 } catch (e) {
                     console.error("Error adding ICE candidate:", e);
                     showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
@@ -583,25 +638,41 @@
             if (peerConnection && peerConnection.connectionState !== 'closed') {
                 peerConnection.close();
                 peerConnection = null;
-                videoSender = null; // Clear video sender reference
+                videoSender = null;
             }
-            stopCamera(); // Ensure local camera is off
-            remoteVideo.srcObject = null; // Clear remote video source
-            remoteVideo.style.display = 'none'; // Hide remote video
+            stopCamera();
+            remoteVideo.srcObject = null;
+            remoteVideo.style.display = 'none';
             if (masterElapsedTimeInterval) {
-                clearInterval(masterElapsedTimeInterval); // Stop timer
+                clearInterval(masterElapsedTimeInterval);
                 masterElapsedTimeInterval = null;
             }
+            if (bpmInterval) {
+                clearInterval(bpmInterval);
+                bpmInterval = null;
+            }
+            // Reset BPM display and player arousal display
+            masterBpmDisplay.textContent = `BPM: 0`;
+            playerArousalStatus.textContent = `ความเงี่ยน Player: --/10`;
+            playerArousalBarForMaster.style.width = `0%`;
+
             setTimeout(() => {
                 window.location.href = '/lobby.html';
-            }, 3000); // Redirect after notification
+            }, 3000);
         });
 
 
         // --- Event Listeners for DOM elements ---
         document.addEventListener('DOMContentLoaded', () => {
-            updateMasterBpmDisplay(); // Initial display update for BPM
+            // NEW: Initialize myRoom and myRole from URL parameters on page load
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('room') && urlParams.has('role')) {
+                myRoom = parseInt(urlParams.get('room'));
+                myRole = urlParams.get('role');
+                console.log(`Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+            }
 
+            updateMasterBpmDisplay(); // Initial display update
             // Start Master's game timer (adjust this to be triggered by game start signal from server)
             let seconds = 0;
             masterElapsedTimeInterval = setInterval(() => {
@@ -611,108 +682,101 @@
                 masterGameTimer.textContent = `เวลาเล่น: ${m}:${s}`;
             }, 1000);
 
-            // BPM control buttons
+
             increaseBpmBtn.addEventListener('click', () => {
-                if (masterBpmLevel < maxBpmLevel) {
-                    masterBpmLevel++;
-                    isBpmStopped = false; // Ensure it's not stopped when changing speed
-                    updateMasterBpmDisplay();
-                } else {
-                    showMessage("BPM อยู่ในระดับสูงสุดแล้ว!", 'info');
-                }
+                currentBpm = Math.min(currentBpm + 10, 200); // Max BPM 200
+                updateMasterBpmDisplay();
+                showMessage(`ตั้งค่าความเร็วเป็น: ${currentBpm} BPM`, 'info');
             });
 
             decreaseBpmBtn.addEventListener('click', () => {
-                if (masterBpmLevel > 1) {
-                    masterBpmLevel--;
-                    isBpmStopped = false; // Ensure it's not stopped when changing speed
-                    updateMasterBpmDisplay();
-                } else {
-                    showMessage("BPM อยู่ในระดับต่ำสุดแล้ว!", 'info');
-                }
+                currentBpm = Math.max(currentBpm - 10, 0); // Min BPM 0
+                updateMasterBpmDisplay();
+                showMessage(`ตั้งค่าความเร็วเป็น: ${currentBpm} BPM`, 'info');
             });
 
-            // Event listener for the Stop/Start BPM button
             stopBpmBtn.addEventListener('click', () => {
-                isBpmStopped = !isBpmStopped; // Toggle state
-                updateMasterBpmDisplay(); // Update display based on new state
-                // Emit command to Player
-                if (isBpmStopped) {
-                    showMessage('Master สั่งหยุด BPM', 'info');
+                if (currentBpm > 0) {
+                    currentBpm = 0; // Stop BPM
+                    showMessage('หยุด BPM!', 'info');
                 } else {
-                    showMessage('Master สั่งเริ่ม BPM', 'info');
+                    currentBpm = 100; // Resume to default BPM
+                    showMessage('เริ่ม BPM!', 'success');
                 }
+                updateMasterBpmDisplay(); // This will also send bpm_stop/bpm_start command
             });
 
-            // Master's command buttons
-            masterOkBtn.addEventListener('click', () => {
-                socket.emit('masterCommand', { type: 'ok', message: 'Master: Ok! ✅✅✅' });
-                showMessage('ส่งคำสั่ง: Ok!', 'success');
-            });
-            masterNoBtn.addEventListener('click', () => {
-                socket.emit('masterCommand', { type: 'no', message: 'Master: No! ❌❌❌' });
-                showMessage('ส่งคำสั่ง: No!', 'success');
-            });
-            masterCumNowBtn.addEventListener('click', () => {
-                socket.emit('masterCommand', { type: 'cum_now', message: 'Master: Cum Now! 💦💦💦' });
-                showMessage('ส่งคำสั่ง: Cum Now!', 'success');
-            });
-            masterDontTouchBtn.addEventListener('click', () => {
-                socket.emit('masterCommand', { type: 'dont_touch', message: 'Master: Don\'t Touch! 🚫🚫🚫' });
-                showMessage('ส่งคำสั่ง: Don\'t Touch!', 'success');
-            });
-
-            // Camera controls
             masterOpenCameraBtn.addEventListener('click', () => startCamera());
             masterSwapCameraBtn.addEventListener('click', switchCamera);
             masterStopCameraBtn.addEventListener('click', stopCamera);
 
-            // Back to Lobby button
+            masterOkBtn.addEventListener('click', () => {
+                socket.emit('masterCommand', { room: myRoom, type: 'ok', message: 'Master: OK! 👌' }); // Pass myRoom
+                showMessage('ส่งคำสั่ง: OK!', 'success');
+            });
+            masterNoBtn.addEventListener('click', () => {
+                socket.emit('masterCommand', { room: myRoom, type: 'no', message: 'Master: NO! 🙅' }); // Pass myRoom
+                showMessage('ส่งคำสั่ง: NO!', 'success');
+            });
+            masterCumNowBtn.addEventListener('click', () => {
+                socket.emit('masterCommand', { room: myRoom, type: 'cum_now', message: 'Master สั่งให้คุณหลั่ง! 💦💦💦' }); // Pass myRoom
+                showMessage('ส่งคำสั่ง: CUM NOW!', 'success');
+            });
+            masterDontTouchBtn.addEventListener('click', () => {
+                socket.emit('masterCommand', { room: myRoom, type: 'dont_touch', message: 'Master: ห้ามแตะ! ⛔' }); // Pass myRoom
+                showMessage('ส่งคำสั่ง: DON\'T TOUCH!', 'success');
+            });
+
             backToLobbyBtnMaster.addEventListener('click', () => {
                 showMessage("กำลังกลับสู่ล็อบบี้...", 'info');
-                socket.emit('leaveRoom'); // Inform server that Master is leaving the room
+                socket.emit('leaveRoom');
                 if (peerConnection && peerConnection.connectionState !== 'closed') {
                     peerConnection.close();
                     peerConnection = null;
-                    videoSender = null; // Clear video sender reference
+                    videoSender = null;
                 }
                 stopCamera();
                 remoteVideo.srcObject = null;
-                remoteVideo.style.display = 'none'; // Ensure remote video is hidden too
+                remoteVideo.style.display = 'none';
                 if (masterElapsedTimeInterval) {
                     clearInterval(masterElapsedTimeInterval);
                     masterElapsedTimeInterval = null;
                 }
-                // Do NOT disconnect the main socket connection here.
-                // It should remain connected to join other rooms in the lobby.
+                if (bpmInterval) {
+                    clearInterval(bpmInterval);
+                    bpmInterval = null;
+                }
                 setTimeout(() => {
                     window.location.href = '/lobby.html';
-                }, 1500); // Redirect after message
+                }, 1500);
             });
         });
 
-        // Listener for Master to receive Player's arousal updates
-        socket.on('playerArousalUpdate', (arousalLevel) => {
-            console.log("Master received Player arousal update:", arousalLevel);
-            updateMasterArousalDisplay(arousalLevel);
-        });
-
-        // Listener for Master side to receive commands from Player
+        // Socket.IO Listeners for commands from Player
         socket.on('playerCommand', (data) => {
             console.log("Master received command from Player:", data);
-            showMessage(`Player: ${data.message}`, 'info'); // Display Player's command as info
+            playerRequestBox.textContent = data.message;
+            showMessage(`ได้รับคำขอ: ${data.message}`, 'info');
+            // Clear message after a short delay
+            setTimeout(() => {
+                playerRequestBox.textContent = 'รอคำขอจาก Player...';
+            }, 5000);
         });
 
-        // Handle initial connection or reconnection - server typically sends 'paired'
+        // Socket.IO Listener for Player's Arousal Update
+        socket.on('playerArousalUpdate', (arousalLevel) => {
+            console.log("Master received Player Arousal Update:", arousalLevel);
+            playerArousalStatus.textContent = `ความเงี่ยน Player: ${arousalLevel}/10`;
+            playerArousalBarForMaster.style.width = `${(arousalLevel / 10) * 100}%`;
+        });
+
+        // Handle initial connection or reconnection
         socket.on('connect', () => {
             console.log('Master connected to Socket.IO server.');
-            // Server should send 'paired' event if game state dictates a live session
         });
 
         socket.on('disconnect', () => {
             console.log('Master disconnected from Socket.IO server.');
-            // This happens if the server restarts or connection is lost.
-            // If it's an unexpected disconnect, consider showing a message or attempting to reconnect.
         });
     </script>
 </body>
