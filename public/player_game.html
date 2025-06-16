@@ -235,7 +235,7 @@
             visibility: hidden;
             transition: opacity 0.4s ease, visibility 0.4s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            text-align: center;
+            text-align: center; /* Center the message text */
             z-index: 1000; /* Ensure it's on top */
             position: fixed; /* Fixed position */
             top: 20px; /* From top */
@@ -572,8 +572,9 @@
                     }
                 };
 
-                peerConnection.onconnectionstatechange = (event) => {
-                    console.log('[Player] WebRTC connection state:', peerConnection.connectionState);
+                // Add more detailed logging for WebRTC states
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('[Player] WebRTC connection state changed:', peerConnection.connectionState);
                     if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                         showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
                     } else if (peerConnection.connectionState === 'connected') {
@@ -581,8 +582,18 @@
                     }
                 };
 
-                peerConnection.onsignalingstatechange = (event) => {
-                    console.log('[Player] WebRTC signaling state:', peerConnection.signalingState);
+                peerConnection.onsignalingstatechange = () => {
+                    console.log('[Player] WebRTC signaling state changed:', peerConnection.signalingState);
+                };
+
+                peerConnection.onicegatheringstatechange = () => {
+                    console.log('[Player] WebRTC ICE gathering state changed:', peerConnection.iceGatheringState);
+                };
+                
+                peerConnection.onnegotiationneeded = async () => {
+                    console.log('[Player] WebRTC negotiation needed event fired.');
+                    // This is handled by the initial offer/answer flow and track additions.
+                    // No explicit action needed here unless specific re-negotiation is required.
                 };
             }
 
@@ -779,7 +790,7 @@
             } else if (data.type === 'bpm_stop') {
                 animateStrokeVisualizer(0);
                 showMessage("Master สั่งหยุด!", 'info');
-            } else if (data.type === 'bpm_start') {
+            } else if (data.type === 'bpm_start') { // Re-added bpm_start handler
                 animateStrokeVisualizer(data.bpm);
                 showMessage("Master สั่งเริ่ม!", 'info');
             }
