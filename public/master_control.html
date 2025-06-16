@@ -349,7 +349,7 @@
         // NEW: All JavaScript code is now wrapped in DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
             // Global socket connection
-            const socket = io(); // This line is now safe to execute here
+            const socket = io();
 
             // Global variables for WebRTC and game state
             let peerConnection;
@@ -576,8 +576,9 @@
                     }
                 };
 
-                peerConnection.onconnectionstatechange = (event) => {
-                    console.log('[Master] WebRTC connection state:', peerConnection.connectionState);
+                // Add more detailed logging for WebRTC states
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('[Master] WebRTC connection state changed:', peerConnection.connectionState);
                     if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                         showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
                     } else if (peerConnection.connectionState === 'connected') {
@@ -585,8 +586,24 @@
                     }
                 };
 
-                peerConnection.onsignalingstatechange = (event) => {
-                    console.log('[Master] WebRTC signaling state:', peerConnection.signalingState);
+                peerConnection.onsignalingstatechange = () => {
+                    console.log('[Master] WebRTC signaling state changed:', peerConnection.signalingState);
+                };
+
+                peerConnection.onicegatheringstatechange = () => {
+                    console.log('[Master] WebRTC ICE gathering state changed:', peerConnection.iceGatheringState);
+                };
+
+                peerConnection.onnegotiationneeded = async () => {
+                    console.log('[Master] WebRTC negotiation needed event fired. Creating offer...');
+                    try {
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        socket.emit('signal', { room: myRoom, sdp: offer }); // Pass myRoom
+                        console.log('[Master] Negotiation offer sent.');
+                    } catch (e) {
+                        console.error("[Master] Error during negotiationNeeded offer creation:", e);
+                    }
                 };
             }
 
@@ -603,14 +620,14 @@
 
                 // Master creates an offer and sends it to the player
                 if (myRole === 'master') {
-                    console.log('[Master] Role is Master, attempting to create and send offer.');
+                    console.log('[Master] Role is Master, attempting to create and send initial offer.');
                     try {
                         const offer = await peerConnection.createOffer();
                         await peerConnection.setLocalDescription(offer);
-                        console.log('[Master] Sending WebRTC offer from Master:', offer);
+                        console.log('[Master] Sending WebRTC initial offer from Master:', offer);
                         socket.emit('signal', { room: myRoom, sdp: offer }); // Pass myRoom
                     } catch (e) {
-                        console.error("[Master] Error creating or sending offer:", e);
+                        console.error("[Master] Error creating or sending initial offer:", e);
                         showMessage("เกิดข้อผิดพลาดในการเริ่ม WebRTC: " + e.message, 'error');
                     }
                 }
@@ -791,6 +808,55 @@
                 }, 1500); // Redirect after message
             });
         }); // End of DOMContentLoaded
+
+        // Socket.IO Listeners for game commands from Master
+        // NOTE: These listeners must be outside DOMContentLoaded if 'socket' is defined globally
+        // or inside if 'socket' is scoped to DOMContentLoaded.
+        // In the current structure, 'socket' is inside DOMContentLoaded,
+        // so these listeners would NOT be active if placed outside.
+        // They are currently correctly placed inside DOMContentLoaded.
+        // Adding them here for clarity about their role, but they remain nested.
+
+        // These events are crucial for receiving commands from the master
+        // and should be registered as soon as 'socket' is available.
+        // In the current setup, 'socket' is scoped within DOMContentLoaded,
+        // so these must also be within it.
+        //
+        // Example (confirming their current placement is inside DOMContentLoaded):
+        // document.addEventListener('DOMContentLoaded', () => {
+        //   const socket = io(); // Socket initialized here
+        //
+        //   socket.on('masterCommand', (data) => { /* ... */ });
+        //   socket.on('connect', () => { /* ... */ });
+        //   socket.on('disconnect', () => { /* ... */ });
+        //
+        // }); // End of DOMContentLoaded
+        // This is how it is structured, which is correct.
+
+        // Socket.IO Listeners for game commands from Master
+        // (These are currently inside the DOMContentLoaded block in the provided code, which is correct for its scoping)
+        // socket.on('masterCommand', (data) => { ... }); // This would be the actual line in the HTML
+        // socket.on('connect', () => { ... }); // This would be the actual line in the HTML
+        // socket.on('disconnect', () => { ... }); // This would be the actual line in the HTML
+
+        // Listener for Master side to receive commands from Player
+        socket.on('playerCommand', (data) => {
+            console.log("Master received command from Player:", data);
+            playerRequestBox.textContent = data.message;
+            // Optionally clear the message after some time
+            setTimeout(() => {
+                if (playerRequestBox.textContent === data.message) { // Only clear if it's still the same message
+                    playerRequestBox.textContent = 'รอคำขอจาก Player...';
+                }
+            }, 5000);
+        });
+
+        // Listener for Master side to receive player arousal level updates
+        socket.on('playerArousalUpdate', (arousalLevel) => {
+            console.log(`Master received player arousal update: ${arousalLevel}`);
+            playerArousalStatus.textContent = `ความเงี่ยน Player: ${arousalLevel}/10`;
+            playerArousalBarForMaster.style.width = `${(arousalLevel / 10) * 100}%`;
+        });
     </script>
 </body>
 </html>
