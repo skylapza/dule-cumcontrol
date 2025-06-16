@@ -324,6 +324,10 @@ io.on("connection", (socket) => {
       // Redirect Master to master_control.html
       io.to(rooms[room].master).emit("redirect", `/master_control.html?room=${room}&role=master`);
 
+      // ✅ Start WebRTC for both sides
+      io.to(rooms[room].player).emit("startWebRTC", { room, role: "player" });
+      io.to(rooms[room].master).emit("startWebRTC", { room, role: "master" });
+
       // Emit 'paired' event to trigger WebRTC setup on client side
       io.to(rooms[room].player).emit('paired', { room, role: 'player' });
       io.to(rooms[room].master).emit('paired', { room, role: 'master' });
