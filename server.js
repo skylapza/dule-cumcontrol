@@ -1,4 +1,4 @@
-// 📦 server.js - WebRTC signaling server for Render deployment
+// 📦 server.js - WebRTC signaling server with role support (master/player)
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -11,19 +11,23 @@ const io = new Server(server);
 // Serve static files (public directory)
 app.use(express.static(path.join(__dirname, 'public')));
 
-const rooms = {}; // เก็บ socket.id ของผู้ใช้ในแต่ละห้อง
+const rooms = {}; // เก็บ socket.id และ role ของผู้ใช้ในแต่ละห้อง
 
 io.on('connection', (socket) => {
   console.log(`📡 User connected: ${socket.id}`);
 
-  socket.on('join-room', ({ roomId }) => {
+  socket.on('join-room', ({ roomId, role }) => {
     socket.join(roomId);
-    console.log(`👤 ${socket.id} joined room ${roomId}`);
+    console.log(`👤 ${socket.id} joined room ${roomId} as ${role}`);
 
     if (!rooms[roomId]) rooms[roomId] = [];
-    rooms[roomId].push(socket.id);
+    rooms[roomId].push({ id: socket.id, role });
 
-    if (rooms[roomId].length === 2) {
+    const hasMaster = rooms[roomId].some(u => u.role === 'master');
+    const hasPlayer = rooms[roomId].some(u => u.role === 'player');
+
+    // เมื่อทั้ง master และ player อยู่พร้อมกัน ส่ง 'ready'
+    if (hasMaster && hasPlayer) {
       io.to(roomId).emit('ready');
     }
   });
@@ -43,7 +47,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`❌ User disconnected: ${socket.id}`);
     for (const roomId in rooms) {
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+      rooms[roomId] = rooms[roomId].filter(u => u.id !== socket.id);
       if (rooms[roomId].length === 0) delete rooms[roomId];
     }
   });
