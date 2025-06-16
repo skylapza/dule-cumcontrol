@@ -1,530 +1,777 @@
-<!-- public/player_game.html -->
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dule CumControl - Player</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/game_styles.css"> <!-- ลิงก์ไปที่ CSS ที่แยกออกมา -->
-  <style>
-    /* CSS สำหรับแอนิเมชั่น Stroke Visualizer ที่คุณเพิ่มเข้ามา */
-    @keyframes pulseStroke {
-      0% { transform: scaleY(1); }
-      50% { transform: scaleY(1.3); background-color: #f472b6; } /* สีชมพูอมแดง */
-      100% { transform: scaleY(1); }
-    }
-    .stroke-pulse {
-      animation: pulseStroke 0.3s ease;
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dule CumControl - Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/game_styles.css"> <!-- Link to external CSS, assuming it exists -->
+    <style>
+        /* ************************************************* */
+        /* Custom styles for player_game.html to emphasize camera */
+        /* and center everything */
+        /* ************************************************* */
 
-    /* ************************************************* */
-    /* การปรับแต่งสไตล์เฉพาะสำหรับ player_game.html เพื่อเน้นกล้อง */
-    /* และการจัดกึ่งกลางทุกอย่าง */
-    /* ************************************************* */
+        /* Override body styles for consistent background and centering */
+        body {
+            font-family: 'Inter', sans-serif; /* Consistent font with other pages */
+            background: linear-gradient(135deg, #1a0033, #32004d, #4d0066); /* Consistent gradient */
+            color: #e0e0e0; /* Softer white */
+            display: flex;
+            flex-direction: column; /* Ensure content stacks vertically */
+            justify-content: center; /* Center vertically */
+            align-items: center; /* Center horizontally */
+            min-height: 100vh; /* Ensure full viewport height */
+            padding: 20px; /* Add padding for overall content */
+            margin: 0; /* Remove body margin */
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
 
-    /* Override body styles from game_styles.css to center content */
-    body {
-      display: flex;
-      flex-direction: column; /* Ensure content stacks vertically */
-      justify-content: center; /* Center vertically */
-      align-items: center; /* Center horizontally */
-      min-height: 100vh; /* Ensure full viewport height */
-      padding: 0; /* Remove body padding to allow full flex control */
-      margin: 0; /* Remove body margin */
-    }
+        .game-area-container.player-area {
+            max-width: 900px; /* Max width of the Player game area */
+            padding: 20px; /* Reduced padding */
+            gap: 15px; /* Reduced spacing between elements */
+            background: rgba(46, 46, 46, 0.8); /* Consistent background with lobby rooms */
+            border-radius: 15px; /* Rounded corners */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Deep shadow */
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+            width: 100%; /* Take full width on smaller screens */
+        }
 
-    .game-area-container.player-area {
-        max-width: 900px; /* เพิ่มความกว้างสูงสุดของพื้นที่เกม Player */
-        padding: 20px; /* ลด padding ลงเล็กน้อย */
-        gap: 15px; /* ลดระยะห่างระหว่างกลุ่มองค์ประกอบ */
-        /* ลบ flex-grow: 1; ออกเพื่อให้คอนเทนเนอร์ไม่พยายามขยายเต็มพื้นที่แนวนอน */
-        /* ลบ mx-auto ออกจาก HTML และใช้ align-items: center ของ body แทน */
-    }
+        h1 {
+            color: #ffccff;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(255, 204, 255, 0.5);
+            margin-bottom: 20px;
+        }
 
-    /* Style for the video elements to be responsive and larger */
-    .video-display-area { /* Container for local and remote videos */
-        display: flex;
-        flex-direction: column; /* จัดวางวิดีโอแบบ บน-ล่าง */
-        /* flex-wrap: wrap; ไม่จำเป็นสำหรับ column */
-        justify-content: center; /* จัดกึ่งกลางวิดีโอ */
-        align-items: center; /* จัดกึ่งกลางวิดีโอในแนวนอน */
-        gap: 1rem; /* ระยะห่างระหว่างวิดีโอที่ซ้อนกัน */
-        width: 100%; /* ให้ใช้ความกว้างเต็มที่ */
-        margin-bottom: 1rem;
-    }
-
-    .video-element {
-        width: 100%; /* ให้แต่ละวิดีโอใช้พื้นที่เต็มความกว้างของ video-display-area */
-        max-width: 450px; /* จำกัดความกว้างสูงสุดของวิดีโอแต่ละตัว */
-        height: auto; /* รักษาอัตราส่วน */
-        aspect-ratio: 16 / 9;
-        background-color: #2a3547; /* สีเทาเข้มขึ้น */
-        border-radius: 0.75rem; /* มุมโค้งมน (rounded-lg) */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* เพิ่มเงาให้โดดเด่น */
-        object-fit: cover; /* ครอบคลุมพื้นที่วิดีโอ */
-        border: 2px solid #60a5fa; /* เพิ่มเส้นขอบสีฟ้า */
-        display: none; /* <<--- IMPORTANT: Hide video elements by default */
-    }
-
-    /* Responsive adjustments for videos */
-    @media (max-width: 767px) {
-        .video-display-area {
-            flex-direction: column; /* วางวิดีโอซ้อนกันในหน้าจอขนาดเล็ก */
+        /* Container for all video elements */
+        .all-videos-container {
+            display: flex;
+            flex-direction: column; /* Stacks remote and local+stroke sections */
+            justify-content: center;
             align-items: center;
-            gap: 1rem;
+            gap: 1.5rem; /* Space between remote video and local video section */
+            width: 100%;
+            margin-bottom: 1.5rem;
         }
+
+        /* Style for individual video elements to be responsive */
         .video-element {
-            width: 100%; /* ใช้ความกว้างเต็มที่ของ video-display-area */
-            max-width: 450px; /* กำหนดความกว้างสูงสุดเพื่อให้ไม่ใหญ่เกินไป */
+            width: 100%; /* Each video takes full width of its container */
+            max-width: 450px; /* Limit max width for each video */
+            height: auto; /* Maintain aspect ratio */
+            aspect-ratio: 16 / 9;
+            background-color: #2a3547; /* Darker grey background */
+            border-radius: 0.75rem; /* Rounded corners (rounded-lg) */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25); /* Prominent shadow */
+            object-fit: cover; /* Cover video area */
+            border: 2px solid #60a5fa; /* Blue border */
+            display: none; /* Hide video elements by default */
         }
-    }
 
-    /* Smaller camera control buttons */
-    .camera-controls button {
-        padding: 0.4rem 0.8rem; /* ลด padding */
-        font-size: 0.9rem; /* ลดขนาดตัวอักษร */
-        border-radius: 0.5rem; /* ปรับมุมโค้งมน */
-    }
+        /* New flex container to hold Local Video and Stroke Visualizer side-by-side */
+        .local-video-and-stroke-flex {
+            display: flex;
+            flex-direction: row; /* Arranges local video and stroke visualizer side-by-side */
+            justify-content: center;
+            align-items: flex-start; /* Aligns items to the top (video title) */
+            gap: 1rem; /* Space between video and stroke visualizer */
+            width: 100%; /* Allows it to take up available width within its parent */
+            max-width: 500px; /* Max width to control overall size for desktop */
+        }
 
-    /* Smaller timer text */
-    #playerGameTimer {
-        font-size: 1.1rem; /* ลดขนาดตัวอักษร */
-        margin-bottom: 0.5rem;
-    }
+        /* Responsive adjustments */
+        @media (max-width: 767px) {
+            .local-video-and-stroke-flex {
+                flex-direction: column; /* Stack local video and stroke visualizer vertically on small screens */
+                align-items: center; /* Center them when stacked */
+                gap: 1.5rem; /* More space when stacked */
+            }
+        }
 
-    /* Smaller stroke visualizer */
-    .stroke-visualizer-container {
-      width: 15px; /* ลดความกว้าง */
-      height: 150px; /* ลดความสูง */
-      background-color: #ec4899; /* pink-500 */
-      border-radius: 0.5rem;
-      justify-content: flex-end;
-      overflow: hidden;
-      position: relative;
-      margin-left: 0.5rem; /* ลดระยะห่างจากวิดีโอ ให้ชิดขึ้น */
-    }
+        /* Common button styles */
+        button {
+            padding: 0.8rem 1.6rem;
+            font-size: 1rem;
+            border-radius: 0.75rem; /* Consistent rounded corners */
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+        button:hover:enabled {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+            transform: none;
+        }
 
-    #strokeVisualizer {
-      width: 100%;
-      background-color: #fbcfe8; /* pink-300 */
-      transition: height 0.1s ease-out;
-    }
+        /* Camera control buttons */
+        .camera-controls button {
+            padding: 0.6rem 1.2rem; /* Adjusted padding */
+            font-size: 0.95rem; /* Adjusted font size */
+            border-radius: 0.6rem; /* Adjusted rounded corners */
+        }
 
-    /* Smaller arousal display */
-    .arousal-display-group {
-        margin-top: 0.5rem; /* ลด margin-top ให้ชิดขึ้น */
-        max-width: 350px; /* ลดความกว้างสูงสุด */
-        width: 100%; /* ให้ขยายเต็มความกว้างของ parent เพื่อให้จัดกึ่งกลางได้ดีขึ้น */
-    }
-    #playerArousalDisplay {
-        font-size: 1rem; /* ลดขนาดตัวอักษร */
-    }
-    .arousal-bar-container {
-        height: 1rem; /* ลดความสูงของ bar */
-        margin-top: 0.4rem;
-    }
-    .arousal-buttons button {
-        padding: 0.4rem 0.8rem; /* ลด padding */
-        font-size: 0.9rem; /* ลดขนาดตัวอักษร */
-    }
-    .arousal-max-label {
-        font-size: 0.7rem; /* ลดขนาดตัวอักษร */
-    }
+        /* Timer text */
+        #playerGameTimer {
+            font-size: 1.2rem; /* Adjusted font size */
+            margin-bottom: 1rem;
+            color: #b3e0ff; /* Consistent color with lobby */
+            font-weight: 600;
+        }
 
-    /* Smaller control buttons */
-    .controls button {
-        padding: 0.6rem 1.2rem; /* ลด padding */
-        font-size: 1rem; /* ลดขนาดตัวอักษร */
-        margin: 0.4rem; /* ลด margin */
-    }
+        /* Stroke Visualizer */
+        @keyframes pulseStroke {
+            0% { transform: scaleY(0.7); background-color: #ec4899; } /* Start higher to be more visible */
+            50% { transform: scaleY(1.3); background-color: #f472b6; } /* Scale up more noticeably */
+            100% { transform: scaleY(0.7); background-color: #ec4899; } /* Return to higher base */
+        }
+        .stroke-visualizer-container {
+            width: 20px; /* Width of the visualizer bar itself */
+            min-height: 150px; /* Added: Ensures a default minimum height, even if video is not loaded yet */
+            background-color: #ec4899; /* pink-500 */
+            border-radius: 0.75rem; /* More rounded */
+            display: flex; /* Use flexbox to align inner bar */
+            justify-content: center;
+            align-items: flex-end; /* Align bar to bottom */
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* Add shadow */
+        }
 
-    /* Smaller back to lobby button */
-    #backToLobbyBtnPlayer {
-        padding: 0.3rem 0.7rem; /* ลด padding */
-        font-size: 0.8rem; /* ลดขนาดตัวอักษร */
-        margin-top: 1rem; /* ลด margin-top */
-    }
+        #strokeVisualizer {
+            width: 100%;
+            height: 60%; /* Changed: Initial height increased to be more visible */
+            background-color: #fbcfe8; /* pink-300 */
+            transition: height 0.1s ease-out, background-color 0.1s ease-out; /* Smooth transition */
+        }
+        .stroke-pulse {
+            animation: pulseStroke 0.3s ease; /* Applied dynamically */
+        }
 
-    /* Notification area adjustments */
-    .player-notification {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-        margin: 0 auto; /* จัดกึ่งกลางแนวนอน */
-    }
-    
-    /* Headings above videos */
-    .video-display-area h3 {
-        text-align: center; /* จัดกึ่งกลางข้อความ */
-        margin-bottom: 0.5rem; /* ระยะห่างจากวิดีโอ */
-    }
+        /* Arousal display */
+        .arousal-display-group {
+            margin: 1.5rem auto; /* Consistent margin */
+            max-width: 400px; /* Consistent max-width */
+            width: 90%; /* Consistent width */
+            background: rgba(30, 30, 30, 0.6); /* Consistent background */
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        #playerArousalDisplay {
+            font-size: 1.1em; /* Consistent font size */
+            font-weight: 700;
+            color: #ff5252; /* Consistent red color */
+        }
+        .arousal-bar-container {
+            height: 1.2rem; /* Consistent height */
+            margin-top: 0.6rem;
+            background-color: #4a4a4a; /* Consistent track color */
+            border-radius: 0.6rem;
+        }
+        #playerArousalBar {
+            background-color: #f44336; /* Consistent vibrant red */
+        }
+        .arousal-buttons button {
+            padding: 0.6rem 1rem; /* Consistent padding */
+            font-size: 0.9em; /* Consistent font size */
+            border-radius: 0.6rem; /* Consistent rounded corners */
+            margin: 0.2rem; /* Add small margin for button spacing */
+        }
+        .arousal-max-label {
+            font-size: 0.8rem; /* Consistent font size */
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+        }
 
-    /* Flex container for camera and stroke visualizer */
-    /* Adjust this to ensure the stroke visualizer aligns correctly next to the stacked videos */
-    .player-visual-area-flex {
-        display: flex;
-        flex-direction: row; /* จัดวิดีโอและ stroke bar เคียงข้างกัน */
-        justify-content: center;
-        align-items: flex-start; /* จัดให้ stroke bar อยู่ระดับเดียวกับกล้องบนสุด */
-        width: 100%;
-        margin-bottom: 1.5rem;
-    }
+        /* Player command buttons */
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem; /* Increased gap */
+            margin: 1.5rem auto;
+            max-width: 600px; /* Increased max width for more buttons */
+        }
+        .controls button {
+            padding: 0.8rem 1.6rem; /* Consistent button size */
+            font-size: 1.1rem; /* Slightly larger text */
+            border-radius: 0.75rem;
+            min-width: 120px; /* Ensure minimum width for buttons */
+        }
+        #playerSlowPleaseBtn {
+            background-color: #3b82f6; /* Blue */
+        }
+        #playerICanCumBtn {
+            background-color: #22c55e; /* Green */
+        }
+        #playerPleaseStopBtn {
+            background-color: #f97316; /* Orange */
+        }
 
-  </style>
+        /* Notification area (consistent with lobby and master_control) */
+        #messageBox {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 0, 0, 0.3); /* Reddish for error */
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            max-width: 400px;
+            width: 90%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            z-index: 1000; /* Ensure it's on top */
+            position: fixed; /* Fixed position */
+            top: 20px; /* From top */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust for perfect centering */
+        }
+        #messageBox.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        #messageBox.success {
+            background-color: rgba(0, 128, 0, 0.3); /* Greenish for success */
+        }
+        #messageBox.info {
+            background-color: rgba(0, 100, 200, 0.3); /* Bluish for info */
+        }
+
+        /* Back to Lobby button */
+        #backToLobbyBtnPlayer {
+            background-color: #4a5568; /* Darker gray for subtle look */
+            color: #cbd5e0;
+            border-bottom: 1px solid #718096; /* Subtle underline effect */
+            text-decoration: none; /* Remove default underline */
+            padding: 0.6rem 1.2rem;
+            font-size: 0.95rem;
+            margin-top: 2rem;
+        }
+        #backToLobbyBtnPlayer:hover {
+            background-color: #2d3748;
+            color: #edf2f7;
+            text-decoration: none;
+        }
+
+        /* Headings above videos */
+        .video-label-container { /* New container for video titles */
+            text-align: center;
+            margin-bottom: 0.5rem;
+            color: #b3e0ff; /* Light blue for video titles */
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white font-sans">
-  <div class="max-w-2xl game-area-container player-area"> <!-- Removed mx-auto here -->
-    <h1 class="text-3xl font-bold text-center mb-4">Player</h1>
+    <div id="messageBox" class="message-box"></div>
 
-    <p id="playerGameTimer" class="text-lg">เวลาเล่น: 00:00</p>
+    <div class="max-w-2xl game-area-container player-area">
+        <h1 class="text-3xl font-bold text-center mb-4">Player</h1>
 
-    <div class="flex justify-center gap-2 my-2 camera-controls">
-      <button id="playerOpenCameraBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded">เปิดกล้อง</button>
-      <button id="playerSwapCameraBtn" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded">สลับกล้อง</button>
-      <button id="playerStopCameraBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">ปิดกล้อง</button>
-    </div>
-    
-    <div class="player-visual-area-flex">
-        <!-- Videos are now stacked vertically within this area -->
-        <div class="video-display-area">
+        <p id="playerGameTimer" class="text-lg">เวลาเล่น: 00:00</p>
+
+        <div class="flex justify-center gap-4 my-4 camera-controls">
+            <button id="playerOpenCameraBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded">เปิดกล้อง</button>
+            <button id="playerSwapCameraBtn" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded">สลับกล้อง</button>
+            <button id="playerStopCameraBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">ปิดกล้อง</button>
+        </div>
+
+        <div class="all-videos-container">
+            <!-- Remote Video (Master's camera) -->
             <div>
-                <h3>กล้อง Master</h3>
+                <h3 class="video-label-container">กล้อง Master</h3>
                 <video id="remoteVideo" class="video-element" autoplay playsinline></video>
             </div>
-            <div>
-                <h3>กล้องของคุณ</h3>
-                <video id="localVideo" class="video-element" autoplay playsinline muted></video>
+
+            <!-- Local Video (Your camera) and Stroke Visualizer side-by-side -->
+            <div class="local-video-and-stroke-flex">
+                <div>
+                    <h3 class="video-label-container">กล้องของคุณ</h3>
+                    <video id="localVideo" class="video-element" autoplay playsinline muted></video>
+                </div>
+                <div class="stroke-visualizer-container">
+                    <div id="strokeVisualizer" style="height: 60%"></div> <!-- Changed initial height here -->
+                </div>
             </div>
         </div>
-        
-        <div class="stroke-visualizer-container">
-          <div id="strokeVisualizer" style="height: 30%"></div>
+
+        <div class="text-center mb-6 arousal-display-group">
+            <div id="playerArousalDisplay" class="text-lg font-bold">ความเงี่ยนตอนนี้: 5/10</div>
+            <div class="w-full bg-gray-600 h-5 rounded relative overflow-hidden my-2 arousal-bar-container">
+                <div id="playerArousalBar" class="bg-red-500 h-full transition-all duration-300" style="width: 50%"></div>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs arousal-max-label">CUM</span>
+            </div>
+            <div class="flex justify-center gap-4 arousal-buttons">
+                <button id="decreaseArousalBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded">ลดระดับ</button>
+                <button id="increaseArousalBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded">เพิ่มระดับ</button>
+            </div>
+        </div>
+
+        <div class="flex justify-center gap-4 mb-4 controls">
+            <button id="playerSlowPleaseBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">slow please</button>
+            <button id="playerICanCumBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">I can cum</button>
+            <button id="playerPleaseStopBtn" class="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded">please stop</button>
+        </div>
+
+        <div class="text-center mt-8">
+            <button id="backToLobbyBtnPlayer" class="underline text-sm">กลับไปล็อบบี้</button>
         </div>
     </div>
-    <div id="playerNotification" class="player-notification"></div> <!-- Notification area -->
 
-    <div class="text-center mb-6 arousal-display-group">
-      <div id="playerArousalDisplay" class="text-lg font-bold">ความเงี่ยนตอนนี้: 5/10</div>
-      <div class="w-full bg-gray-600 h-5 rounded relative overflow-hidden my-2 arousal-bar-container">
-        <div id="playerArousalBar" class="bg-red-500 h-full transition-all duration-300" style="width: 50%"></div>
-        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs arousal-max-label">CUM</span>
-      </div>
-      <div class="flex justify-center gap-4 arousal-buttons">
-        <button id="decreaseArousalBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded">ลดระดับ</button>
-        <button id="increaseArousalBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded">เพิ่มระดับ</button>
-      </div>
-    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Global socket connection
+        const socket = io();
 
-    <div class="flex justify-center gap-4 mb-4 controls">
-      <button id="playerSlowPleaseBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">slow please</button>
-      <button id="playerICanCumBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">I can cum</button>
-      <button id="playerPleaseStopBtn" class="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded">please stop</button>
-    </div>
+        // WebRTC related variables
+        let peerConnection;
+        let localStream;
+        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+        let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
 
-    <div class="text-center mt-8">
-      <button id="backToLobbyBtnPlayer" class="underline text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">กลับไปล็อบบี้</button>
-    </div>
-  </div>
+        // Player Game Logic variables
+        const maxArousal = 10;
+        let playerArousalLevel = 5;
+        let playerGameElapsedTime = 0;
+        let playerElapsedTimeInterval = null; // Interval ID for game timer
+        let strokeInterval; // For BPM animation
 
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- Removed: <script src="/script.js"></script> as WebRTC logic is now in this file -->
-
-  <script>
-    // Global socket connection
-    const socket = io();
-
-    // WebRTC related variables
-    let peerConnection;
-    let localStream;
-    let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
-
-    // Player Game Logic variables
-    const maxArousal = 10;
-    let playerArousalLevel = 5;
-    let playerGameElapsedTime = 0;
-    let playerElapsedTimeInterval = null;
-    let strokeInterval; // For BPM animation
-
-    // DOM Elements
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
-    const playerGameTimer = document.getElementById('playerGameTimer');
-    const playerNotification = document.getElementById('playerNotification');
-    const playerArousalDisplay = document.getElementById('playerArousalDisplay');
-    const playerArousalBar = document.getElementById('playerArousalBar');
-    const increaseArousalBtn = document.getElementById('increaseArousalBtn');
-    const decreaseArousalBtn = document.getElementById('decreaseArousalBtn');
-    const playerSlowPleaseBtn = document.getElementById('playerSlowPleaseBtn');
-    const playerICanCumBtn = document.getElementById('playerICanCumBtn');
-    const playerPleaseStopBtn = document.getElementById('playerPleaseStopBtn');
-    const backToLobbyBtnPlayer = document.getElementById('backToLobbyBtnPlayer');
-    const playerOpenCameraBtn = document.getElementById('playerOpenCameraBtn');
-    const playerSwapCameraBtn = document.getElementById('playerSwapCameraBtn');
-    const playerStopCameraBtn = document.getElementById('playerStopCameraBtn');
-    const strokeVisualizer = document.getElementById('strokeVisualizer');
+        // DOM Elements
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const playerGameTimer = document.getElementById('playerGameTimer');
+        const playerArousalDisplay = document.getElementById('playerArousalDisplay');
+        const playerArousalBar = document.getElementById('playerArousalBar');
+        const increaseArousalBtn = document.getElementById('increaseArousalBtn');
+        const decreaseArousalBtn = document.getElementById('decreaseArousalBtn');
+        const playerSlowPleaseBtn = document.getElementById('playerSlowPleaseBtn');
+        const playerICanCumBtn = document.getElementById('playerICanCumBtn');
+        const playerPleaseStopBtn = document.getElementById('playerPleaseStopBtn');
+        const backToLobbyBtnPlayer = document.getElementById('backToLobbyBtnPlayer');
+        const playerOpenCameraBtn = document.getElementById('playerOpenCameraBtn');
+        const playerSwapCameraBtn = document.getElementById('playerSwapCameraBtn');
+        const playerStopCameraBtn = document.getElementById('playerStopCameraBtn');
+        const strokeVisualizer = document.getElementById('strokeVisualizer');
+        const strokeVisualizerContainer = document.querySelector('.stroke-visualizer-container'); // Get the container
+        const messageBox = document.getElementById('messageBox'); // For custom notifications
 
 
-    // Function to play stroke sound
-    function playStrokeSound() {
-      const audio = new Audio('/sounds/stroke.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(e => console.warn("เสียงยังไม่โหลดทัน หรือเบราว์เซอร์บล็อกการเล่นอัตโนมัติ:", e));
-    }
+        // Function to play stroke sound (Tone.js could be used for more control)
+        function playStrokeSound() {
+            // Note: For actual deployment, you'll need to host 'stroke.mp3' or use an audio library like Tone.js
+            // For now, using standard Audio object. Browser auto-play policies might block this without user interaction.
+            try {
+                const audio = new Audio('/sounds/stroke.mp3');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.warn("Cannot play audio: ", e));
+            } catch (e) {
+                console.error("Error creating audio object:", e);
+            }
+        }
 
-    // Function to show notifications
-    function showPlayerNotification(message, isError = false) {
-        if (playerNotification) {
-            playerNotification.textContent = message;
-            playerNotification.className = 'player-notification ' + (isError ? 'error' : ''); // Reset classes
-            playerNotification.classList.add('show');
+        // Function to display custom messages (consistent with other pages)
+        function showMessage(message, type = 'error') {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Reset classes and show
+            messageBox.classList.add(type); // Add specific type class for styling
+            // Hide message after a few seconds
             setTimeout(() => {
-                playerNotification.classList.remove('show');
+                messageBox.classList.remove('show');
+                // Remove type class after hiding to reset for next message
             }, 3000);
         }
-    }
 
-    // Function to update arousal display
-    function updateArousalDisplay() {
-      playerArousalDisplay.textContent = `ความเงี่ยนตอนนี้: ${playerArousalLevel}/${maxArousal}`;
-      playerArousalBar.style.width = `${(playerArousalLevel / maxArousal) * 100}%`;
-      socket.emit("playerArousalUpdate", playerArousalLevel); // Emit to Master via Socket.IO
-    }
-
-    // Function to animate the stroke visualizer
-    function animateStrokeVisualizer(bpm) {
-      if (strokeInterval) clearInterval(strokeInterval); // Clear previous interval
-
-      if (bpm === 0) { // If BPM is 0, stop animation and reset visualizer
-          strokeVisualizer.style.height = '0%';
-          return;
-      }
-
-      const intervalMs = 60000 / bpm; // Time for one beat in milliseconds
-      
-      strokeInterval = setInterval(() => {
-        // "Up" stroke
-        strokeVisualizer.style.height = '100%';
-        strokeVisualizer.classList.add('stroke-pulse'); // Add pulse animation
-        if (bpm >= 140) playStrokeSound(); // Play sound only for higher BPM
-
-        setTimeout(() => {
-          // "Down" stroke
-          strokeVisualizer.style.height = '30%';
-          strokeVisualizer.classList.remove('stroke-pulse'); // Remove pulse animation
-        }, intervalMs / 2); // Half the interval for down stroke
-      }, intervalMs);
-    }
-
-    // Camera and WebRTC Functions
-    async function startCamera(facingMode = 'user') {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facingMode },
-          audio: false
-        });
-        localVideo.srcObject = localStream;
-        localVideo.style.display = 'block'; // Show local video when stream starts
-        currentFacingMode = facingMode; // Update current facing mode
-
-        // Add tracks to peer connection if it exists
-        if (peerConnection) {
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
+        // Function to update arousal display
+        function updateArousalDisplay() {
+            playerArousalDisplay.textContent = `ความเงี่ยนตอนนี้: ${playerArousalLevel}/${maxArousal}`;
+            playerArousalBar.style.width = `${(playerArousalLevel / maxArousal) * 100}%`;
+            socket.emit("playerArousalUpdate", playerArousalLevel); // Emit to Master via Socket.IO
         }
 
-      } catch (e) {
-        console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
-        showPlayerNotification("ไม่สามารถเข้าถึงกล้องได้: " + e.message, true);
-      }
-    }
-
-    function stopCamera() {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-        localVideo.srcObject = null;
-        localVideo.style.display = 'none'; // Hide local video when stopped
-      }
-    }
-
-    async function switchCamera() {
-      const newFacingMode = (currentFacingMode === 'user' || currentFacingMode === undefined) ? 'environment' : 'user';
-      await startCamera(newFacingMode);
-    }
-
-    // WebRTC Setup
-    function createPeerConnection() {
-        peerConnection = new RTCPeerConnection();
-
-        // Add local stream tracks to peer connection
-        if (localStream) {
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-        }
-
-        // Event: When an ICE candidate is generated
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit('signal', { candidate: event.candidate });
+        // NEW: Function to synchronize stroke visualizer height with local video
+        function syncStrokeVisualizerHeight() {
+            if (localVideo && strokeVisualizerContainer && localVideo.style.display !== 'none') {
+                // Wait for the video to potentially render and get its actual height
+                requestAnimationFrame(() => {
+                    const videoHeight = localVideo.offsetHeight;
+                    if (videoHeight > 0) { // Ensure video has a height
+                        strokeVisualizerContainer.style.height = `${videoHeight}px`;
+                    }
+                });
+            } else {
+                 // Fallback height if video is hidden or not loaded
+                 // This ensures the container is visible from the start
+                 strokeVisualizerContainer.style.height = `200px`;
             }
-        };
+        }
 
-        // Event: When remote tracks are received
-        peerConnection.ontrack = (event) => {
-            if (remoteVideo.srcObject !== event.streams[0]) {
-                remoteVideo.srcObject = event.streams[0];
-                remoteVideo.style.display = 'block'; // Show remote video when stream is received
-                console.log('Received remote stream');
+        // Function to animate the stroke visualizer
+        function animateStrokeVisualizer(bpm) {
+            if (strokeInterval) clearInterval(strokeInterval); // Clear previous interval
+
+            if (bpm === 0) { // If BPM is 0, stop animation and reset visualizer
+                strokeVisualizer.style.height = '0%';
+                strokeVisualizer.classList.remove('stroke-pulse'); // Ensure animation class is removed
+                return;
             }
-        };
-    }
 
-    // Socket.IO Listeners for WebRTC Signaling
-    socket.on('paired', async ({ role, room }) => {
-        showPlayerNotification('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม');
-        createPeerConnection(); // Create peer connection when paired
+            const intervalMs = 60000 / bpm; // Time for one beat in milliseconds
 
-        // If this player is the 'initiator' (e.g., the first one to establish the connection or 'master' usually)
-        // In our setup, server redirects to specific HTML, so roles are clear.
-        // Player will create an Answer if Master creates an Offer.
-        // But for initial connection, either can initiate if needed. Let's make Master the initiator.
-        // Player simply waits for offer, then sends answer.
-    });
+            strokeInterval = setInterval(() => {
+                // "Up" stroke
+                strokeVisualizer.style.height = '100%';
+                strokeVisualizer.classList.add('stroke-pulse'); // Add pulse animation
+                if (bpm >= 140) playStrokeSound(); // Play sound only for higher BPM
 
-    socket.on('signal', async (data) => {
-        if (!peerConnection) {
-            createPeerConnection();
+                setTimeout(() => {
+                    // "Down" stroke
+                    strokeVisualizer.style.height = '60%'; // Return to the new default visible height
+                    // Remove class after the animation cycle completes to allow it to re-trigger
+                    setTimeout(() => {
+                        strokeVisualizer.classList.remove('stroke-pulse');
+                    }, 300); // Should match or be slightly longer than pulseStroke animation duration
+                }, intervalMs / 2); // Half the interval for down stroke
+            }, intervalMs);
         }
 
-        if (data.sdp) {
-            // Received an offer or answer
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-
-            if (data.sdp.type === 'offer') {
-                // If it's an offer, create an answer
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.emit('signal', { sdp: answer });
+        // Camera and WebRTC Functions
+        async function startCamera(facingMode = 'user') {
+            // Stop any existing tracks before getting new stream
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localVideo.srcObject = null; // Clear existing stream from video element
             }
-        } else if (data.candidate) {
-            // Received an ICE candidate
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-    });
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: facingMode },
+                    audio: false // Player does not need to send audio
+                });
+                localVideo.srcObject = localStream;
+                localVideo.style.display = 'block'; // Show local video when stream starts
+                currentFacingMode = facingMode; // Update current facing mode
+                showMessage("กล้องเปิดแล้ว", 'success');
 
-    // Handle partner disconnected
-    socket.on('partnerDisconnected', (message) => {
-        showPlayerNotification(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", true);
-        if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-        }
-        stopCamera(); // Ensure local camera is off
-        remoteVideo.style.display = 'none'; // Hide remote video
-        if (strokeInterval) clearInterval(strokeInterval); // Stop stroke animation
-        setTimeout(() => {
-            window.location.href = '/lobby.html';
-        }, 3000); // Redirect after notification
-    });
+                // Call sync height after video is displayed and has a chance to render
+                localVideo.onloadedmetadata = () => {
+                    syncStrokeVisualizerHeight();
+                };
+                if (localVideo.readyState >= 2) { // If video is already loaded
+                    syncStrokeVisualizerHeight();
+                }
 
 
-    // --- Event Listeners ---
-    document.addEventListener('DOMContentLoaded', () => {
-        updateArousalDisplay(); // Initial display update
-
-        // Arousal buttons
-        if (increaseArousalBtn) {
-          increaseArousalBtn.addEventListener('click', () => {
-            if (playerArousalLevel < maxArousal) {
-              playerArousalLevel++;
-              updateArousalDisplay();
-            }
-          });
-        }
-        if (decreaseArousalBtn) {
-          decreaseArousalBtn.addEventListener('click', () => {
-            if (playerArousalLevel > 1) { // Assuming minimum arousal is 1
-              playerArousalLevel--;
-              updateArousalDisplay();
-            }
-          });
-        }
-
-        // Camera controls
-        playerOpenCameraBtn.addEventListener('click', () => startCamera());
-        playerSwapCameraBtn.addEventListener('click', switchCamera);
-        playerStopCameraBtn.addEventListener('click', stopCamera);
-
-        // Player's request buttons
-        playerSlowPleaseBtn.addEventListener('click', () => {
-            socket.emit('playerCommand', { type: 'slow_please', message: 'Player: slow please' });
-        });
-        playerICanCumBtn.addEventListener('click', () => {
-            socket.emit('playerCommand', { type: 'i_can_cum', message: 'Player: I can cum' });
-        });
-        playerPleaseStopBtn.addEventListener('click', () => {
-            socket.emit('playerCommand', { type: 'please_stop', message: 'Player: please stop' });
-        });
-
-        // Back to Lobby button
-        if (backToLobbyBtnPlayer) {
-            backToLobbyBtnPlayer.addEventListener('click', () => {
+                // Add or replace tracks in the peer connection
                 if (peerConnection) {
+                    const videoTrack = localStream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        if (videoSender) { // If a sender already exists, replace the track
+                            await videoSender.replaceTrack(videoTrack);
+                            console.log('Replaced video track in peer connection');
+                        } else { // First time adding video track to this peer connection
+                            videoSender = peerConnection.addTrack(videoTrack, localStream);
+                            console.log('Added video track for the first time to peer connection');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
+                let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
+                if (e.name === "NotAllowedError") {
+                    errorMessage += ": ไม่ได้รับอนุญาตให้ใช้กล้อง (โปรดตรวจสอบการอนุญาตของเบราว์เซอร์)";
+                } else if (e.name === "NotFoundError") {
+                    errorMessage += ": ไม่พบอุปกรณ์กล้อง";
+                } else {
+                    errorMessage += `: ${e.message}`;
+                }
+                showMessage(errorMessage, 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                localVideo.srcObject = null;
+                localVideo.style.display = 'none'; // Hide local video when stopped
+                showMessage("กล้องปิดแล้ว", 'info');
+            }
+            syncStrokeVisualizerHeight(); // Reset height when camera stops
+        }
+
+        async function switchCamera() {
+            const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+            await startCamera(newFacingMode);
+        }
+
+        // WebRTC Setup: Create Peer Connection
+        function createPeerConnection() {
+            // Check if peerConnection already exists to prevent re-creation
+            if (peerConnection && peerConnection.connectionState !== 'closed') {
+                console.warn("Peer connection already exists and is not closed. Skipping creation.");
+                return;
+            }
+
+            peerConnection = new RTCPeerConnection({
+                // Add ICE servers here for STUN/TURN (critical for real-world scenarios)
+                // For example:
+                // iceServers: [
+                //     { urls: 'stun:stun.l.google.com:19302' },
+                //     { urls: 'turn:YOUR_TURN_SERVER_URL', username: 'YOUR_USERNAME', credential: 'YOUR_PASSWORD' }
+                // ]
+            });
+            console.log("RTCPeerConnection created.");
+
+            // Add local stream tracks to peer connection if available
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoSender = peerConnection.addTrack(videoTrack, localStream); // Store sender for replaceTrack
+                }
+            }
+
+            // Event: When an ICE candidate is generated (for NAT traversal)
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('Sending ICE candidate:', event.candidate);
+                    socket.emit('signal', { candidate: event.candidate });
+                }
+            };
+
+            // Event: When remote tracks are received from the other peer
+            peerConnection.ontrack = (event) => {
+                if (remoteVideo.srcObject !== event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                    remoteVideo.style.display = 'block'; // Show remote video when stream is received
+                    showMessage('ได้รับสตรีมวิดีโอจาก Master แล้ว', 'success');
+                    console.log('Received remote stream');
+                }
+            };
+
+            // Handle connection state changes
+            peerConnection.onconnectionstatechange = (event) => {
+                console.log('WebRTC connection state:', peerConnection.connectionState);
+                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                    showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
+                    // Potentially trigger a reconnect or return to lobby
+                } else if (peerConnection.connectionState === 'connected') {
+                    showMessage('เชื่อมต่อ WebRTC กับ Master สำเร็จ!', 'success');
+                }
+            };
+
+            // Handle signaling state changes
+            peerConnection.onsignalingstatechange = (event) => {
+                console.log('WebRTC signaling state:', peerConnection.signalingState);
+            };
+        }
+
+        // Socket.IO Listeners for WebRTC Signaling
+        socket.on('paired', async ({ role, room }) => {
+            showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
+            createPeerConnection(); // Create peer connection when paired
+
+            // Player waits for offer from Master, then sends answer.
+            // If the Master is slow or disconnected, the Player might need to handle
+            // timeouts or re-pairing.
+        });
+
+        socket.on('signal', async (data) => {
+            if (!peerConnection || peerConnection.signalingState === 'closed') {
+                createPeerConnection(); // Recreate if closed or not initialized
+            }
+
+            if (data.sdp) {
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                    if (data.sdp.type === 'offer') {
+                        // If Player receives an offer (as expected from Master)
+                        console.log('Received offer from Master, creating answer...');
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        socket.emit('signal', { sdp: answer });
+                        console.log('WebRTC answer sent.');
+                    } else if (data.sdp.type === 'answer') {
+                        console.log('Received answer from Master (unexpected for Player, but handled)');
+                    }
+                } catch (e) {
+                    console.error("Error setting remote description or creating answer:", e);
+                    showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
+                }
+            } else if (data.candidate) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    console.log('Added ICE candidate');
+                } catch (e) {
+                    console.error("Error adding ICE candidate:", e);
+                    showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
+                }
+            }
+        });
+
+        // Handle partner disconnected
+        socket.on('partnerDisconnected', (message) => {
+            showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
+            if (peerConnection && peerConnection.connectionState !== 'closed') {
+                peerConnection.close();
+                peerConnection = null;
+                videoSender = null; // Clear video sender reference
+            }
+            stopCamera(); // Ensure local camera is off, which also calls syncStrokeVisualizerHeight
+            remoteVideo.srcObject = null; // Clear remote video source
+            remoteVideo.style.display = 'none'; // Hide remote video
+            if (playerElapsedTimeInterval) {
+                clearInterval(playerElapsedTimeInterval); // Stop timer
+                playerElapsedTimeInterval = null;
+            }
+            if (strokeInterval) {
+                clearInterval(strokeInterval); // Stop stroke animation
+                strokeInterval = null;
+                strokeVisualizer.style.height = '0%'; // Reset visualizer
+                strokeVisualizer.classList.remove('stroke-pulse');
+            }
+            setTimeout(() => {
+                window.location.href = '/lobby.html';
+            }, 3000); // Redirect after notification
+        });
+
+
+        // --- Event Listeners for DOM elements ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateArousalDisplay(); // Initial display update for arousal
+            syncStrokeVisualizerHeight(); // Call initially in case video is somehow already loaded/visible
+
+            // Start Player's game timer (adjust this to be triggered by game start signal from server)
+            let seconds = 0;
+            playerElapsedTimeInterval = setInterval(() => {
+                seconds++;
+                const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+                const s = String(seconds % 60).padStart(2, '0');
+                playerGameTimer.textContent = `เวลาเล่น: ${m}:${s}`;
+            }, 1000);
+
+            // Arousal buttons
+            increaseArousalBtn.addEventListener('click', () => {
+                if (playerArousalLevel < maxArousal) {
+                    playerArousalLevel++;
+                    updateArousalDisplay();
+                    showMessage("เพิ่มระดับความเงี่ยน", 'info');
+                } else {
+                    showMessage("ความเงี่ยนถึงระดับสูงสุดแล้ว!", 'info');
+                }
+            });
+
+            decreaseArousalBtn.addEventListener('click', () => {
+                if (playerArousalLevel > 1) { // Assuming minimum arousal is 1
+                    playerArousalLevel--;
+                    updateArousalDisplay();
+                    showMessage("ลดระดับความเงี่ยน", 'info');
+                } else {
+                    showMessage("ความเงี่ยนถึงระดับต่ำสุดแล้ว!", 'info');
+                }
+            });
+
+            // Camera controls
+            playerOpenCameraBtn.addEventListener('click', () => startCamera());
+            playerSwapCameraBtn.addEventListener('click', switchCamera);
+            playerStopCameraBtn.addEventListener('click', stopCamera);
+
+            // Player's request buttons
+            playerSlowPleaseBtn.addEventListener('click', () => {
+                socket.emit('playerCommand', { type: 'slow_please', message: 'Player: slow please' });
+                showMessage('ส่งคำขอ: Slow Please!', 'success');
+            });
+            playerICanCumBtn.addEventListener('click', () => {
+                socket.emit('playerCommand', { type: 'i_can_cum', message: 'Player: I can cum' });
+                showMessage('ส่งคำขอ: I Can Cum!', 'success');
+            });
+            playerPleaseStopBtn.addEventListener('click', () => {
+                socket.emit('playerCommand', { type: 'please_stop', message: 'Player: please stop' });
+                showMessage('ส่งคำขอ: Please Stop!', 'success');
+            });
+
+            // Back to Lobby button
+            backToLobbyBtnPlayer.addEventListener('click', () => {
+                showMessage("กำลังกลับสู่ล็อบบี้...", 'info');
+                socket.emit('leaveRoom'); // Inform server that Player is leaving the room
+                if (peerConnection && peerConnection.connectionState !== 'closed') {
                     peerConnection.close();
                     peerConnection = null;
+                    videoSender = null; // Clear video sender reference
                 }
-                stopCamera();
+                stopCamera(); // Also calls syncStrokeVisualizerHeight
+                remoteVideo.srcObject = null;
                 remoteVideo.style.display = 'none'; // Ensure remote video is hidden too
-                if (strokeInterval) clearInterval(strokeInterval);
-                socket.disconnect(); // Inform server about disconnect
-                window.location.href = '/lobby.html';
+                if (playerElapsedTimeInterval) {
+                    clearInterval(playerElapsedTimeInterval);
+                    playerElapsedTimeInterval = null;
+                }
+                if (strokeInterval) {
+                    clearInterval(strokeInterval);
+                    strokeInterval = null;
+                    strokeVisualizer.style.height = '0%'; // Reset visualizer
+                    strokeVisualizer.classList.remove('stroke-pulse');
+                }
+                // Do NOT disconnect the main socket connection here.
+                // It should remain connected to join other rooms in the lobby.
+                setTimeout(() => {
+                    window.location.href = '/lobby.html';
+                }, 1500); // Redirect after message
             });
-        }
 
-        // Timer
-        let seconds = 0;
-        setInterval(() => {
-          seconds++;
-          const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-          const s = String(seconds % 60).padStart(2, '0');
-          playerGameTimer.textContent = `เวลาเล่น: ${m}:${s}`;
-        }, 1000);
-    });
+            // Add event listener for window resize to resync visualizer height
+            window.addEventListener('resize', syncStrokeVisualizerHeight);
+        });
 
-    // Socket.IO Listeners for game commands from Master
-    socket.on('masterCommand', (data) => {
-        console.log("Player received command from Master:", data);
-        if (data.type === 'cum_now') {
-            showPlayerNotification("Master สั่งให้คุณหลั่ง! 💦💦💦");
-            playerArousalLevel = maxArousal;
-            updateArousalDisplay();
-        } else if (data.type === 'dont_touch') {
-            showPlayerNotification(data.message);
-        } else if (data.type === 'ok' || data.type === 'no') {
-            showPlayerNotification(data.message);
-        } else if (data.type === 'bpm_update') {
-            animateStrokeVisualizer(data.bpm);
-            showPlayerNotification(`ความเร็ว: ${data.bpm} BPM`);
-        } else if (data.type === 'bpm_stop') {
-            animateStrokeVisualizer(0); // Stop animation by setting BPM to 0
-            showPlayerNotification("Master สั่งหยุด!");
-        } else if (data.type === 'bpm_start') {
-            animateStrokeVisualizer(data.bpm); // Re-start with current BPM
-            showPlayerNotification("Master สั่งเริ่ม!");
-        }
-    });
+        // Socket.IO Listeners for game commands from Master
+        socket.on('masterCommand', (data) => {
+            console.log("Player received command from Master:", data);
+            if (data.type === 'cum_now') {
+                showMessage("Master สั่งให้คุณหลั่ง! 💦💦💦", 'success');
+                playerArousalLevel = maxArousal; // Set arousal to max
+                updateArousalDisplay();
+                // Consider adding game end logic here
+            } else if (data.type === 'dont_touch') {
+                showMessage(data.message, 'error'); // Usually a warning/error
+            } else if (data.type === 'ok' || data.type === 'no') {
+                showMessage(data.message, 'info'); // General info
+            } else if (data.type === 'bpm_update') {
+                animateStrokeVisualizer(data.bpm);
+                showMessage(`ความเร็ว: ${data.bpm} BPM`, 'info');
+            } else if (data.type === 'bpm_stop') {
+                animateStrokeVisualizer(0); // Stop animation by setting BPM to 0
+                showMessage("Master สั่งหยุด!", 'info');
+            } else if (data.type === 'bpm_start') {
+                animateStrokeVisualizer(data.bpm); // Re-start with current BPM
+                showMessage("Master สั่งเริ่ม!", 'info');
+            }
+        });
 
-    // Initial check: if already paired or somehow redirected here, try to setup WebRTC
-    // This is useful if a refresh happens, though full session restoration might need more complex logic.
-    socket.on('connect', () => {
-        // When reconnected, if already in a room, the server might send 'paired' again
-        // Or client might proactively try to recreate peer connection if local storage indicates game state
-        // For simplicity, rely on server's 'paired' signal to re-initiate WebRTC
-    });
-  </script>
+        // Handle initial connection or reconnection - server typically sends 'paired'
+        socket.on('connect', () => {
+            console.log('Player connected to Socket.IO server.');
+            // Server should send 'paired' event if game state dictates a live session
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Player disconnected from Socket.IO server.');
+            // This happens if the server restarts or connection is lost.
+            // If it's an unexpected disconnect, consider showing a message or attempting to reconnect.
+        });
+    </script>
 </body>
 </html>
