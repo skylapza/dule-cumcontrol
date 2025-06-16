@@ -26,7 +26,6 @@ io.on('connection', (socket) => {
     const hasMaster = rooms[roomId].some(u => u.role === 'master');
     const hasPlayer = rooms[roomId].some(u => u.role === 'player');
 
-    // เมื่อทั้ง master และ player อยู่พร้อมกัน ส่ง 'ready'
     if (hasMaster && hasPlayer) {
       io.to(roomId).emit('ready');
     }
@@ -53,7 +52,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ Use Render-compatible port and host
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
