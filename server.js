@@ -1,4 +1,4 @@
-// แก้ไข script.js โดยใช้ ID ปุ่มที่ตรงกับ HTML ล่าสุด และแทน alert ด้วย messageBox
+// แก้ไข script.js โดยใช้ ID ปุ่มที่ตรงกับ HTML ล่าสุด และแทน alert ด้วย messageBox พร้อมรองรับ WebRTC และออกห้อง
 
 window.addEventListener('DOMContentLoaded', () => {
     const socket = io();
@@ -66,9 +66,6 @@ window.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // ========================
-    // ปุ่มควบคุมฝั่ง Master
-    // ========================
     const bindMasterControls = () => {
         const commandButtons = [
             { id: 'masterOkBtn', command: 'ok' },
@@ -91,29 +88,16 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // ==========================
-    // รับคำสั่งจาก Master ฝั่ง Player
-    // ==========================
     socket.on('masterCommand', ({ type }) => {
         console.log(`[PLAYER] คำสั่งที่ได้รับจาก Master: ${type}`);
         switch (type) {
-            case 'ok':
-                showMessage('Master: OK');
-                break;
-            case 'no-cum':
-                showMessage('Master: ห้ามแตก!');
-                break;
-            case 'stop':
-                showMessage('Master: สั่งให้หยุด');
-                break;
-            default:
-                console.log('Unknown command:', type);
+            case 'ok': showMessage('Master: OK'); break;
+            case 'no-cum': showMessage('Master: ห้ามแตก!'); break;
+            case 'stop': showMessage('Master: สั่งให้หยุด'); break;
+            default: console.log('Unknown command:', type);
         }
     });
 
-    // ==========================
-    // ส่ง arousal จาก Player
-    // ==========================
     if (arousalBar) {
         arousalBar.addEventListener('input', () => {
             const level = parseInt(arousalBar.value);
@@ -121,9 +105,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================
-    // รับ arousal ฝั่ง Master
-    // ==========================
     socket.on('playerArousalUpdate', (level) => {
         const bar = document.getElementById('arousalBar');
         if (bar) {
@@ -132,16 +113,51 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ==========================
-    // แสดงข้อความแบบ custom
-    // ==========================
+    socket.on('signal', async (data) => {
+        if (!peerConnection) {
+            createPeerConnection(myRoom, myRole);
+        }
+        if (data.description) {
+            await peerConnection.setRemoteDescription(data.description);
+            if (data.description.type === 'offer') {
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('signal', { room: myRoom, description: answer });
+            }
+        } else if (data.candidate) {
+            try {
+                await peerConnection.addIceCandidate(data.candidate);
+            } catch (err) {
+                console.error('Error adding ICE candidate:', err);
+            }
+        }
+    });
+
+    socket.on('startWebRTC', async ({ room, role }) => {
+        myRoom = room;
+        myRole = role;
+        await startLocalStream();
+        createPeerConnection(room, role);
+
+        if (role === 'player') {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('signal', { room: room, description: offer });
+        }
+    });
+
+    socket.on('partnerDisconnected', (msg) => {
+        showMessage(msg);
+        setTimeout(() => window.location.href = '/lobby.html', 3000);
+    });
+
     function showMessage(text) {
         if (messageBox) {
             messageBox.textContent = text;
             messageBox.style.display = 'block';
             setTimeout(() => messageBox.style.display = 'none', 3000);
         } else {
-            alert(text); // fallback หากไม่มี messageBox
+            alert(text);
         }
     }
 
