@@ -48,19 +48,24 @@ const rooms = {};           // Stores { roomNumber: { player, playerName, player
 function handleRoomLeave(socketId) {
     const user = connectedUsers[socketId];
     if (!user || !user.room) {
+        console.warn(`[handleRoomLeave] User ${socketId} not found or not in a room.`);
         return; // User not found or not in a room, nothing to clean up
     }
 
     const roomToLeave = user.room;
-    // Check if the room actually exists on the server
+    const leavingRole = user.role;
+    const leavingUsername = user.username;
+    let partnerSocketId = null;
+
+    // Clear the user's room and role info in connectedUsers immediately
+    connectedUsers[socketId].room = null;
+    connectedUsers[socketId].role = null;
+
+    // Check if the room exists before attempting to modify it
     if (!rooms[roomToLeave]) {
-        console.warn(`Attempted to clean up non-existent room: ${roomToLeave} for user ${user.username}`);
+        console.warn(`[handleRoomLeave] Attempted to clean up non-existent room: ${roomToLeave} for user ${leavingUsername}.`);
         return;
     }
-
-    let leavingRole = user.role; // Get role from connectedUsers object
-    let leavingUsername = user.username;
-    let partnerSocketId = null;
 
     // Determine the leaving user's role and their partner's socket ID
     // Then clear the leaving user's info from the room
@@ -68,43 +73,46 @@ function handleRoomLeave(socketId) {
         partnerSocketId = rooms[roomToLeave].master;
         delete rooms[roomToLeave].player; // Remove player from room
         delete rooms[roomToLeave].playerName;
-        rooms[roomToLeave].playerReady = false; // Reset player ready status
-        rooms[roomToLeave].gameStarted = false; // Reset game started status for the room
+        rooms[roomToLeave].playerReady = false; // Reset ready status for this slot
+        rooms[roomToLeave].gameStarted = false; // Game ends if one partner leaves
     } else if (rooms[roomToLeave].master === socketId) {
         partnerSocketId = rooms[roomToLeave].player;
         delete rooms[roomToLeave].master; // Remove master from room
         delete rooms[roomToLeave].masterName;
-        rooms[roomToLeave].masterReady = false; // Reset master ready status
-        rooms[roomToLeave].gameStarted = false; // Reset game started status for the room
+        rooms[roomToLeave].masterReady = false; // Reset ready status for this slot
+        rooms[roomToLeave].gameStarted = false; // Game ends if one partner leaves
     } else {
-        // This case should ideally not happen if user.room is accurate
-        console.warn(`User ${user.username} (${socketId}) claims to be in room ${roomToLeave} but their role (${user.role}) doesn't match.`);
-        // Attempt to remove them from any role just in case
-        if (rooms[roomToLeave].player === socketId) { delete rooms[roomToLeave].player; delete rooms[roomToLeave].playerName; rooms[roomToLeave].playerReady = false; rooms[roomToLeave].gameStarted = false; }
-        if (rooms[roomToLeave].master === socketId) { delete rooms[roomToLeave].master; delete rooms[roomToLeave].masterName; rooms[roomToLeave].masterReady = false; rooms[roomToLeave].gameStarted = false; }
+        console.warn(`[handleRoomLeave] User ${leavingUsername} (${socketId}) claims to be in room ${roomToLeave} but their role (${leavingRole}) doesn't match a valid slot. Attempting fallback cleanup.`);
+        // Fallback for inconsistent state: try to remove them from any slot they might be in
+        if (rooms[roomToLeave].player === socketId) {
+            delete rooms[roomToLeave].player;
+            delete rooms[roomToLeave].playerName;
+            rooms[roomToLeave].playerReady = false;
+            rooms[roomToLeave].gameStarted = false;
+        }
+        if (rooms[roomToLeave].master === socketId) {
+            delete rooms[roomToLeave].master;
+            delete rooms[roomToLeave].masterName;
+            rooms[roomToLeave].masterReady = false;
+            rooms[roomToLeave].gameStarted = false;
+        }
     }
 
-    console.log(`${leavingUsername} (${leavingRole}) กำลังออกจากห้อง ${roomToLeave}.`);
+    console.log(`[handleRoomLeave] ${leavingUsername} (${leavingRole}) กำลังออกจากห้อง ${roomToLeave}.`);
 
-    // If a partner exists and is still connected, notify them and redirect to lobby
+    // Notify partner if they exist and are still connected
     if (partnerSocketId && io.sockets.sockets.get(partnerSocketId)) {
-        console.log(`แจ้งเตือนคู่ ${partnerSocketId} ในห้อง ${roomToLeave} ว่า ${leavingUsername} (${leavingRole}) ออกจากห้อง`);
+        console.log(`[handleRoomLeave] แจ้งเตือนคู่ ${partnerSocketId} ในห้อง ${roomToLeave} ว่า ${leavingUsername} (${leavingRole}) ออกจากห้อง`);
         io.to(partnerSocketId).emit("partnerDisconnected", `${leavingRole} ของคุณ (${leavingUsername}) ออกจากห้องแล้ว!`);
         io.to(partnerSocketId).emit("redirect", "/lobby.html"); // Redirect partner back to lobby
     }
 
-    // Clear room and role information from the connectedUsers object
-    if (connectedUsers[socketId]) { // Ensure it still exists before modification
-        connectedUsers[socketId].room = null;
-        connectedUsers[socketId].role = null;
-    }
-
-    // Clean up the room if both players have left
+    // Clean up the room if it's now empty
     if (!rooms[roomToLeave].player && !rooms[roomToLeave].master) {
         delete rooms[roomToLeave];
-        console.log(`ห้อง ${roomToLeave} ว่างเปล่าและถูกลบแล้ว.`);
+        console.log(`[handleRoomLeave] ห้อง ${roomToLeave} ว่างเปล่าและถูกลบแล้ว.`);
     } else {
-        // If the room is not empty (e.g., one player remains), update its status for remaining player and lobby
+        // If the room is not empty, update its status for remaining player(s) and for the lobby view
         io.to(roomToLeave).emit("roomStatusUpdate", {
             room: roomToLeave,
             player: rooms[roomToLeave].playerName || null,
@@ -114,14 +122,16 @@ function handleRoomLeave(socketId) {
             masterReady: rooms[roomToLeave].masterReady
         });
     }
+
     // Always update the lobby view (for all connected clients) to reflect changes in room status
+    // Use optional chaining for `rooms[roomToLeave]` as it might have been deleted
     io.emit("roomStatusUpdate", {
         room: roomToLeave,
-        player: rooms[roomToLeave].playerName || null,
-        master: rooms[roomToLeave].masterName || null,
-        readyToStart: rooms[roomToLeave].player && rooms[roomToLeave].master && rooms[roomToLeave].playerReady && rooms[roomToLeave].masterReady,
-        playerReady: rooms[roomToLeave].playerReady,
-        masterReady: rooms[roomToLeave].masterReady
+        player: rooms[roomToLeave]?.playerName || null,
+        master: rooms[roomToLeave]?.masterName || null,
+        readyToStart: rooms[roomToLeave] ? (rooms[roomToLeave].player && rooms[roomToLeave].master && rooms[roomToLeave].playerReady && rooms[roomToLeave].masterReady) : false,
+        playerReady: rooms[roomToLeave]?.playerReady || false,
+        masterReady: rooms[roomToLeave]?.masterReady || false
     });
 }
 
@@ -314,8 +324,7 @@ io.on("connection", (socket) => {
       // Redirect Master to master_control.html
       io.to(rooms[room].master).emit("redirect", `/master_control.html?room=${room}&role=master`);
 
-      // NEW: Emit 'paired' event to trigger WebRTC setup on client side
-      // This is crucial for the updated client-side HTML files to initiate WebRTC.
+      // Emit 'paired' event to trigger WebRTC setup on client side
       io.to(rooms[room].player).emit('paired', { room, role: 'player' });
       io.to(rooms[room].master).emit('paired', { room, role: 'master' });
     }
@@ -354,7 +363,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // NEW Event: Master sends a game command to Player
+  // Event: Master sends a game command to Player
   socket.on('masterCommand', ({ room, type, message, bpm }) => {
       // Ensure the room exists and there's a player to receive the command
       if (rooms[room] && rooms[room].player) {
@@ -363,7 +372,7 @@ io.on("connection", (socket) => {
       }
   });
 
-  // NEW Event: Player sends a game command to Master
+  // Event: Player sends a game command to Master
   socket.on('playerCommand', ({ room, type, message }) => {
       // Ensure the room exists and there's a master to receive the command
       if (rooms[room] && rooms[room].master) {
@@ -372,7 +381,7 @@ io.on("connection", (socket) => {
       }
   });
 
-  // NEW Event: Player sends arousal level update to Master
+  // Event: Player sends arousal level update to Master
   socket.on('playerArousalUpdate', (arousalLevel) => {
       // Ensure the user is in a room and there's a master to receive the update
       if (socket.room && rooms[socket.room] && rooms[socket.room].master) {
@@ -383,26 +392,28 @@ io.on("connection", (socket) => {
 
   // Event: Client explicitly leaves a room (e.g., clicks "Back to Lobby")
   socket.on('leaveRoom', () => {
-    // Call the centralized handler for room leaving
-    handleRoomLeave(socket.id);
-    // Additionally, make the socket leave the Socket.IO room explicitly for client-initiated leave
-    if (socket.room) { // Ensure socket.room is set before calling leave
+    // Make the socket leave the Socket.IO room first
+    if (socket.room) {
+        console.log(`[leaveRoom] Socket ${socket.id} explicitly leaving Socket.IO room ${socket.room}.`);
         socket.leave(socket.room);
-        // Clear local socket state after leaving the room
-        socket.room = null;
-        socket.role = null;
     }
+    // Then call the centralized handler for room cleanup and notification
+    handleRoomLeave(socket.id);
+    // Clear local socket state (these are already cleared in handleRoomLeave's connectedUsers entry)
+    socket.room = null; // Clear from socket object
+    socket.role = null; // Clear from socket object
   });
 
   // Event: Socket disconnects from the server (e.g., closing browser, network issue)
   socket.on("disconnect", () => {
     console.log("❌ ผู้ใช้ตัดการเชื่อมต่อ:", socket.id);
-    const disconnectedSocketId = socket.id; // Store ID before deletion
+    const disconnectedSocketId = socket.id;
 
-    // Handle room leave logic first using the helper function
-    handleRoomLeave(disconnectedSocketId);
+    // Call the centralized handler for room cleanup and partner notification
+    handleRoomLeave(disconnectedSocketId); // This will clear room/role in connectedUsers, and notify partner
 
     // Finally, remove the user from the global connectedUsers list
+    // This must happen AFTER handleRoomLeave has processed the user's room info
     delete connectedUsers[disconnectedSocketId];
     // Update the total user count for all clients
     io.emit("userCount", Object.keys(connectedUsers).length);
@@ -413,3 +424,4 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
   console.log(`🚀 เซิร์ฟเวอร์กำลังทำงานบนพอร์ต ${PORT}`);
 });
+
