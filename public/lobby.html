@@ -1,492 +1,688 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lobby</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-      background: #121212;
-      color: white;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      color: #ffccff;
-      margin-bottom: 20px;
-    }
-
-    .room-container {
-        display: flex;
-        flex-wrap: wrap; /* Allow rooms to wrap to the next line */
-        justify-content: center; /* Center rooms horizontally */
-        gap: 20px; /* Space between rooms */
-        margin-bottom: 30px;
-        max-width: 90%;
-        width: 100%;
-    }
-
-    .room {
-      display: flex; /* Use flexbox for internal layout */
-      flex-direction: column; /* Stack items vertically */
-      background: #2e2e2e;
-      padding: 15px;
-      border-radius: 10px;
-      width: 200px; /* Adjust width as needed */
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      flex-shrink: 0; /* Prevent shrinking on smaller screens */
-    }
-
-    .room h2 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        color: #ffccff;
-    }
-
-    .room button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #663399;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-      font-size: 0.95em;
-    }
-
-    .room button:hover:enabled {
-        background-color: #7a47b1;
-    }
-
-    .room button:disabled {
-        background-color: #555;
-        cursor: not-allowed;
-    }
-
-    .room-status {
-        margin-top: 10px;
-        font-size: 0.9em;
-        color: #bbb;
-        min-height: 2em; /* Ensure consistent height */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .ready-area {
-        margin-top: 15px;
-        padding-top: 10px;
-        border-top: 1px solid #444;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .ready-area p {
-        margin: 0;
-        color: #aaffaa;
-        font-weight: bold;
-    }
-
-    #chat {
-      margin-top: 30px;
-      max-width: 450px;
-      width: 90%;
-      background: #2e2e2e;
-      padding: 15px;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #chat h2 {
-        margin-top: 0;
-        color: #ffccff;
-        margin-bottom: 10px;
-    }
-
-    #chatMessages {
-      height: 200px;
-      overflow-y: auto;
-      border: 1px solid #444;
-      padding: 10px;
-      margin-bottom: 10px;
-      background: #1a1a1a;
-      border-radius: 5px;
-      text-align: left;
-      word-wrap: break-word; /* Allow long words to break */
-    }
-
-    .chat-input-area {
-        display: flex;
-        gap: 5px;
-    }
-
-    #chatInput {
-      flex-grow: 1;
-      padding: 8px;
-      border-radius: 5px;
-      border: 1px solid #444;
-      background: #3a3a3a;
-      color: white;
-      box-sizing: border-box;
-    }
-
-    #sendBtn {
-      padding: 8px 12px;
-      background: #663399;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    #sendBtn:hover {
-        background-color: #7a47b1;
-    }
-  </style>
-</head>
-<body>
-  <h1>ล็อบบี้</h1>
-  <p id="userCount">ผู้เล่นออนไลน์: 0 คน</p>
-
-  <div class="room-container">
-    <!-- Room 1 -->
-    <div class="room" id="room-1">
-      <h2>Room 1</h2>
-      <button onclick="joinRoom(1, 'player')" id="join-player-1">Join as Player</button>
-      <button onclick="joinRoom(1, 'master')" id="join-master-1">Join as Master</button>
-      <p class="room-status" id="room-status-1">ว่าง</p>
-      <div class="ready-area" id="ready-area-1" style="display: none;">
-        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
-        <button onclick="sendReadySignal(1)" id="ready-button-1">พร้อม!</button>
-      </div>
-    </div>
-
-    <!-- Room 2 -->
-    <div class="room" id="room-2">
-      <h2>Room 2</h2>
-      <button onclick="joinRoom(2, 'player')" id="join-player-2">Join as Player</button>
-      <button onclick="joinRoom(2, 'master')" id="join-master-2">Join as Master</button>
-      <p class="room-status" id="room-status-2">ว่าง</p>
-      <div class="ready-area" id="ready-area-2" style="display: none;">
-        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
-        <button onclick="sendReadySignal(2)" id="ready-button-2">พร้อม!</button>
-      </div>
-    </div>
-
-    <!-- Room 3 -->
-    <div class="room" id="room-3">
-      <h2>Room 3</h2>
-      <button onclick="joinRoom(3, 'player')" id="join-player-3">Join as Player</button>
-      <button onclick="joinRoom(3, 'master')" id="join-master-3">Join as Master</button>
-      <p class="room-status" id="room-status-3">ว่าง</p>
-      <div class="ready-area" id="ready-area-3" style="display: none;">
-        <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
-        <button onclick="sendReadySignal(3)" id="ready-button-3">พร้อม!</button>
-      </div>
-    </div>
-
-    <!-- เพิ่มห้องได้ตามต้องการ -->
-
-  </div>
-
-  <div id="chat">
-    <h2>แชท</h2>
-    <div id="chatMessages"></div>
-    <div class="chat-input-area">
-        <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ...">
-        <button id="sendBtn">ส่ง</button>
-    </div>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    let selectedRoom = null;
-    let selectedRole = null;
-    let username = localStorage.getItem("username");
-    let hasJoinedRoom = false; // Flag เพื่อติดตามว่าผู้เล่นได้เข้าร่วมห้องแล้วหรือไม่
-
-    // จำนวนห้องทั้งหมดในหน้า Lobby (ต้องตรงกับจำนวนห้องใน HTML)
-    const TOTAL_ROOMS = 3; 
-
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!username) {
-            alert("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!");
-            window.location.href = "/";
-            return;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobby</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for the entire page */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter font for modern look */
+            background: linear-gradient(135deg, #1a0033, #32004d, #4d0066); /* Consistent gradient */
+            color: #e0e0e0; /* Softer white */
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
         }
 
+        /* Main title styling */
+        h1 {
+            color: #ffccff;
+            margin-bottom: 20px;
+            font-size: 2.5em; /* Slightly smaller than index.html for hierarchy */
+            text-shadow: 0 0 10px rgba(255, 204, 255, 0.5); /* Soft glow */
+        }
+
+        /* Online user count */
+        #userCount {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #b3e0ff;
+        }
+
+        /* Room container for responsive layout */
+        .room-container {
+            display: flex;
+            flex-wrap: wrap; /* Allow rooms to wrap to the next line */
+            justify-content: center; /* Center rooms horizontally */
+            gap: 25px; /* More space between rooms */
+            margin-bottom: 40px;
+            width: 100%; /* Take full width */
+            max-width: 1200px; /* Max width for larger screens */
+        }
+
+        /* Individual room styling */
+        .room {
+            display: flex;
+            flex-direction: column;
+            background: rgba(46, 46, 46, 0.8); /* Slightly transparent background */
+            padding: 20px;
+            border-radius: 15px; /* More rounded corners */
+            width: 250px; /* Slightly larger room cards */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Deeper shadow */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+        }
+        .room:hover {
+            transform: translateY(-5px); /* Lift effect on hover */
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+        }
+
+        .room h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #ffccff;
+            font-size: 1.8em;
+        }
+
+        /* Buttons within rooms */
+        .room button {
+            margin-top: 10px;
+            padding: 12px 20px; /* Larger buttons */
+            background: #6a0dad; /* Consistent button color */
+            color: white;
+            border: none;
+            border-radius: 10px; /* More rounded */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .room button:hover:enabled {
+            background-color: #8c2bdc;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .room button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .room button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Room status text */
+        .room-status {
+            margin-top: 15px;
+            font-size: 1em;
+            color: #bbb;
+            min-height: 2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        /* Ready area for paired players */
+        .ready-area {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.2); /* Dashed border for visual separation */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ready-area p {
+            margin: 0;
+            color: #aaffaa;
+            font-weight: bold;
+            font-size: 1.05em;
+        }
+
+        /* Chat section */
+        #chat {
+            margin-top: 30px;
+            max-width: 500px; /* Wider chat for better readability */
+            width: 90%;
+            background: rgba(46, 46, 46, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #chat h2 {
+            margin-top: 0;
+            color: #ffccff;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        #chatMessages {
+            height: 250px; /* Taller chat box */
+            overflow-y: auto;
+            border: 1px solid #444;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-align: left;
+            word-wrap: break-word;
+            line-height: 1.6; /* Better line spacing */
+            font-size: 0.95em;
+            color: #f0f0f0;
+        }
+        #chatMessages::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatMessages::-webkit-scrollbar-track {
+            background: #2b003f;
+            border-radius: 10px;
+        }
+        #chatMessages::-webkit-scrollbar-thumb {
+            background: #6a0dad;
+            border-radius: 10px;
+        }
+        #chatMessages::-webkit-scrollbar-thumb:hover {
+            background: #8c2bdc;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px; /* More space between input and button */
+        }
+
+        #chatInput {
+            flex-grow: 1;
+            padding: 10px 15px; /* More padding */
+            border-radius: 8px; /* More rounded */
+            border: 1px solid #444;
+            background: #3a3a3a;
+            color: white;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        #chatInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #chatInput:focus {
+            outline: none;
+            border-color: #ffccff;
+            box-shadow: 0 0 10px rgba(106, 13, 173, 0.5);
+        }
+
+        #sendBtn {
+            padding: 10px 20px;
+            background: #6a0dad;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+        #sendBtn:hover {
+            background-color: #8c2bdc;
+            transform: translateY(-2px);
+        }
+        #sendBtn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Message box styling (consistent with index.html) */
+        #messageBox {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 0, 0, 0.3); /* Reddish for error */
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            max-width: 400px;
+            width: 90%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            text-align: center; /* Center the message text */
+        }
+        #messageBox.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        #messageBox.success {
+            background-color: rgba(0, 128, 0, 0.3); /* Greenish for success */
+        }
+        #messageBox.info {
+            background-color: rgba(0, 100, 200, 0.3); /* Bluish for info */
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            .room {
+                width: 100%; /* Full width for smaller screens */
+                max-width: 300px; /* Constrain max width for better readability */
+            }
+            #chat {
+                width: 95%;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            .room-container {
+                gap: 15px;
+            }
+            .room {
+                padding: 15px;
+            }
+            .room h2 {
+                font-size: 1.5em;
+            }
+            .room button {
+                padding: 10px 15px;
+                font-size: 0.9em;
+            }
+            #chat {
+                padding: 15px;
+            }
+            #chatMessages {
+                height: 180px;
+                font-size: 0.9em;
+            }
+            .chat-input-area {
+                flex-direction: column; /* Stack input and button on very small screens */
+                gap: 10px;
+            }
+            #sendBtn {
+                width: 100%;
+            }
+            #messageBox {
+                width: 95%;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>ล็อบบี้</h1>
+    <p id="userCount">ผู้เล่นออนไลน์: 0 คน</p>
+
+    <div id="messageBox" class="message-box"></div>
+
+    <div class="room-container" id="roomContainer">
+        <!-- Room 1 -->
+        <div class="room" id="room-1">
+            <h2>Room 1</h2>
+            <button onclick="joinRoom(1, 'player')" id="join-player-1">เข้าร่วมในฐานะ Player</button>
+            <button onclick="joinRoom(1, 'master')" id="join-master-1">เข้าร่วมในฐานะ Master</button>
+            <p class="room-status" id="room-status-1">ว่าง</p>
+            <div class="ready-area" id="ready-area-1" style="display: none;">
+                <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+                <button onclick="sendReadySignal(1)" id="ready-button-1">พร้อม!</button>
+            </div>
+        </div>
+
+        <!-- Room 2 -->
+        <div class="room" id="room-2">
+            <h2>Room 2</h2>
+            <button onclick="joinRoom(2, 'player')" id="join-player-2">เข้าร่วมในฐานะ Player</button>
+            <button onclick="joinRoom(2, 'master')" id="join-master-2">เข้าร่วมในฐานะ Master</button>
+            <p class="room-status" id="room-status-2">ว่าง</p>
+            <div class="ready-area" id="ready-area-2" style="display: none;">
+                <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+                <button onclick="sendReadySignal(2)" id="ready-button-2">พร้อม!</button>
+            </div>
+        </div>
+
+        <!-- Room 3 -->
+        <div class="room" id="room-3">
+            <h2>Room 3</h2>
+            <button onclick="joinRoom(3, 'player')" id="join-player-3">เข้าร่วมในฐานะ Player</button>
+            <button onclick="joinRoom(3, 'master')" id="join-master-3">เข้าร่วมในฐานะ Master</button>
+            <p class="room-status" id="room-status-3">ว่าง</p>
+            <div class="ready-area" id="ready-area-3" style="display: none;">
+                <p>ผู้เล่นครบแล้ว! กดพร้อมเพื่อเริ่มเกม</p>
+                <button onclick="sendReadySignal(3)" id="ready-button-3">พร้อม!</button>
+            </div>
+        </div>
+
+        <!-- เพิ่มห้องได้ตามต้องการ -->
+
+    </div>
+
+    <div id="chat">
+        <h2>แชท</h2>
+        <div id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="พิมพ์ข้อความ..." aria-label="พิมพ์ข้อความแชท">
+            <button id="sendBtn">ส่ง</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Global variables for socket and user state
+        const socket = io();
+        let selectedRoom = null;
+        let selectedRole = null;
+        let username = localStorage.getItem("username");
+        let hasJoinedRoom = false; // Flag to track if the player has joined a room
+
+        // Total number of rooms on the Lobby page (must match HTML rooms)
+        const TOTAL_ROOMS = 3;
+
+        // Get DOM elements for easier access
         const chatInput = document.getElementById("chatInput");
         const sendBtn = document.getElementById("sendBtn");
+        const userCountElement = document.getElementById("userCount");
+        const chatMessagesBox = document.getElementById("chatMessages");
+        const messageBox = document.getElementById("messageBox");
 
-        sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        // Function to display custom messages (replaces alert())
+        function showMessage(message, type = 'error') {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Reset classes and show
+            messageBox.classList.add(type); // Add specific type class for styling
+            // Hide message after a few seconds
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                // Remove type class after hiding to reset for next message
+                messageBox.classList.remove(type);
+            }, 3000);
+        }
+
+        // --- Event Listeners for DOM Content and Socket Connection ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if username exists, if not, redirect to index page
+            if (!username) {
+                showMessage("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!", 'error');
+                // Delay redirect slightly to allow message to be seen
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 1500);
+                return;
             }
+
+            // Add event listeners for chat input and send button
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Focus on chat input when page loads for quick typing
+            chatInput.focus();
         });
 
-        // เมื่อเชื่อมต่อ socket สำเร็จ
+        // When socket connects, handle room status check
         socket.on('connect', () => {
             console.log('Connected to socket, requesting room status.');
-            // ตรวจสอบว่าผู้ใช้นี้เคยเข้าร่วมห้องก่อนหน้านี้หรือไม่
             const storedRoom = localStorage.getItem('lastRoom');
             const storedRole = localStorage.getItem('lastRole');
 
             if (storedRoom && storedRole) {
-                // ถ้าเคย, ให้ส่ง Event ไปถาม Server ว่ายังอยู่ในห้องนั้นอยู่ไหม
+                // If user was in a room previously, ask server about its status
                 selectedRoom = parseInt(storedRoom);
                 selectedRole = storedRole;
-                hasJoinedRoom = true; // ตั้งค่าชั่วคราวเป็น true เพื่อให้ปุ่มถูกปิดในขณะที่รอการยืนยันจาก Server
-                disableAllJoinButtons(); // ปิดปุ่มไว้ก่อน
+                hasJoinedRoom = true; // Temporarily set true while awaiting server confirmation
+                disableAllJoinButtons(); // Disable buttons while checking
                 const statusElement = document.getElementById(`room-status-${selectedRoom}`);
                 if (statusElement) {
                     statusElement.textContent = `กำลังตรวจสอบสถานะห้องสำหรับ ${selectedRole}...`;
+                    showMessage(`กำลังตรวจสอบสถานะห้องสำหรับ ${selectedRole}...`, 'info');
                 }
-                socket.emit('checkMyRoomStatus', { room: selectedRoom, role: selectedRole });
+                socket.emit('checkMyRoomStatus', { room: selectedRoom, role: selectedRole, name: username });
             } else {
-                 // ถ้าไม่เคย ให้รีเซ็ตสถานะและขอสถานะห้องทั้งหมดจากเซิร์ฟเวอร์
-                 resetLocalStateAndEnableButtons(); // เพิ่มการเรียก reset
-                 socket.emit('requestRoomStatus'); 
+                // If not in any stored room, reset local state and request full room status
+                resetLocalStateAndEnableButtons(); // Ensures fresh state and enabled buttons
             }
         });
-    });
 
-    function sendMessage() {
-        const chatInput = document.getElementById("chatInput");
-        const text = chatInput.value.trim();
-        if (text) {
-            // ถ้าอยู่ในห้องใดๆ ก็จะส่งข้อความเข้าห้องนั้น
-            // ถ้าไม่, จะส่งข้อความรวม (ให้ server จัดการ)
-            socket.emit("chatMessage", { room: selectedRoom, text: text, user: username }); 
-            chatInput.value = "";
-        }
-    }
+        // --- Functions for Lobby Interactions ---
 
-    function sendReadySignal(roomNumber) {
-        if (!username || selectedRoom !== roomNumber || !hasJoinedRoom) {
-            alert("มีข้อผิดพลาด! กรุณาลองใหม่.");
-            return;
-        }
-        socket.emit("playerReady", { room: roomNumber, role: selectedRole });
-        const readyBtn = document.getElementById(`ready-button-${roomNumber}`);
-        if (readyBtn) {
-            readyBtn.disabled = true; // ปิดปุ่ม "พร้อม" ชั่วคราว
-            readyBtn.textContent = "รอการยืนยันจากคู่...";
-        }
-    }
-
-    function joinRoom(roomNumber, role) {
-        if (!username) {
-            alert("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!");
-            window.location.href = "/";
-            return;
-        }
-        if (hasJoinedRoom) {
-            alert("คุณได้เข้าร่วมห้องแล้ว หรือกำลังรอการจับคู่");
-            return;
+        // Send a chat message
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (text) {
+                // If in a room, send message to that room; otherwise, send as a general message (server handles scope)
+                socket.emit("chatMessage", { room: selectedRoom, text: text, user: username });
+                chatInput.value = ""; // Clear input field
+                chatInput.focus(); // Keep focus on input
+            }
         }
 
-        selectedRoom = roomNumber;
-        selectedRole = role;
-        
-        // เก็บข้อมูลห้องและบทบาทไว้ใน localStorage (เผื่อรีเฟรชหน้า)
-        localStorage.setItem('lastRoom', roomNumber);
-        localStorage.setItem('lastRole', role);
-
-        // ส่งข้อมูลการเข้าร่วมห้องไปให้เซิร์ฟเวอร์
-        socket.emit("joinRoom", { room: roomNumber, role: role, name: username });
-
-        // แสดงสถานะ "กำลังรอ" ทันทีที่ผู้เล่นกดเข้าร่วม
-        const statusElement = document.getElementById(`room-status-${roomNumber}`);
-        if (statusElement) {
-            statusElement.textContent = `กำลังรอคู่สำหรับ ${role}...`;
-        }
-        
-        // ปิดปุ่ม "Join" ทั้งหมดในห้องนั้นๆ และห้องอื่นๆ
-        disableAllJoinButtons();
-        // ตั้งค่า flag ว่าผู้เล่นได้เข้าร่วมห้องแล้ว
-        hasJoinedRoom = true; 
-    }
-
-    function disableAllJoinButtons() {
-        for (let i = 1; i <= TOTAL_ROOMS; i++) {
-            const playerBtn = document.getElementById(`join-player-${i}`);
-            const masterBtn = document.getElementById(`join-master-${i}`);
-            if (playerBtn) playerBtn.disabled = true;
-            if (masterBtn) masterBtn.disabled = true;
-        }
-    }
-
-    function enableAllJoinButtons() {
-        for (let i = 1; i <= TOTAL_ROOMS; i++) {
-            const playerBtn = document.getElementById(`join-player-${i}`);
-            const masterBtn = document.getElementById(`join-master-${i}`);
-            // ตรวจสอบว่าปุ่มนั้นมีอยู่จริงก่อนที่จะเข้าถึง .disabled
-            if (playerBtn) playerBtn.disabled = false;
-            if (masterBtn) masterBtn.disabled = false;
-            // รีเซ็ตสถานะปุ่มพร้อมและข้อความ
-            const readyArea = document.getElementById(`ready-area-${i}`);
-            if (readyArea) readyArea.style.display = 'none'; // ซ่อน ready area
-            const readyBtn = document.getElementById(`ready-button-${i}`);
+        // Send a ready signal to the server
+        function sendReadySignal(roomNumber) {
+            // Basic validation: ensure username and correct room/state
+            if (!username || selectedRoom !== roomNumber || !hasJoinedRoom) {
+                showMessage("มีข้อผิดพลาด! กรุณาลองใหม่.", 'error');
+                resetLocalStateAndEnableButtons(); // Reset if an invalid state is detected
+                return;
+            }
+            socket.emit("playerReady", { room: roomNumber, role: selectedRole });
+            const readyBtn = document.getElementById(`ready-button-${roomNumber}`);
             if (readyBtn) {
-                readyBtn.disabled = false;
-                readyBtn.textContent = "พร้อม!";
+                readyBtn.disabled = true; // Disable "Ready" button temporarily
+                readyBtn.textContent = "รอการยืนยันจากคู่..."; // Update button text
             }
-            // รีเซ็ตข้อความสถานะห้อง
-            const statusElement = document.getElementById(`room-status-${i}`);
-            if (statusElement) statusElement.textContent = 'ว่าง';
+            showMessage("ส่งสัญญาณพร้อมแล้ว! รอคู่ของคุณ...", 'info');
         }
-        // ตั้งค่า hasJoinedRoom เป็น false เมื่อมีการเปิดปุ่มทั้งหมด
-        hasJoinedRoom = false; 
-        selectedRoom = null;
-        selectedRole = null;
-        localStorage.removeItem('lastRoom');
-        localStorage.removeItem('lastRole');
-    }
 
-    // Listener สำหรับการอัปเดตสถานะห้องจากเซิร์ฟเวอร์
-    socket.on("roomStatusUpdate", (data) => {
-        // data จะมี { room: roomNumber, player: playerName, master: masterName, readyToStart: boolean, playerReady: boolean, masterReady: boolean }
-        const roomDiv = document.getElementById(`room-${data.room}`);
-        if (!roomDiv) return;
-
-        const statusElement = document.getElementById(`room-status-${data.room}`);
-        const readyArea = document.getElementById(`ready-area-${data.room}`);
-        const readyBtn = document.getElementById(`ready-button-${data.room}`);
-        
-        // อัปเดตสถานะผู้เล่นในห้อง
-        let statusText = "ว่าง";
-        if (data.player && data.master) {
-            statusText = `ครบ: ${data.player} (Player), ${data.master} (Master)`;
-            // แสดงปุ่มพร้อม ถ้าเราอยู่ในห้องนี้
-            if (data.room === selectedRoom && hasJoinedRoom) { 
-                readyArea.style.display = 'flex'; // ใช้ flex เพื่อจัดปุ่มให้สวยงาม
-                if (readyBtn) {
-                    if (selectedRole === 'player' && data.playerReady) { // เราพร้อมแล้ว
-                        readyBtn.disabled = true;
-                        readyBtn.textContent = "รอ Master กดยืนยัน...";
-                    } else if (selectedRole === 'master' && data.masterReady) { // เราพร้อมแล้ว
-                        readyBtn.disabled = true;
-                        readyBtn.textContent = "รอ Player กดยืนยัน...";
-                    } else { // เรายังไม่พร้อม
-                        readyBtn.disabled = false;
-                        readyBtn.textContent = "พร้อม!";
-                    }
-
-                    if (data.playerReady && data.masterReady) {
-                        readyBtn.textContent = "ทั้งคู่พร้อมแล้ว! รอเริ่มเกม...";
-                        readyBtn.disabled = true;
-                    }
-                }
-            } else { // เราไม่ได้อยู่ในห้องนี้
-                readyArea.style.display = 'none';
+        // Join a specific room with a given role
+        function joinRoom(roomNumber, role) {
+            // Check for username and if already in a room
+            if (!username) {
+                showMessage("กรุณาใส่ชื่อผู้ใช้งานจากหน้าแรกก่อน!", 'error');
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 1500);
+                return;
             }
-        } else if (data.player) {
-            statusText = `มี Player: ${data.player} | รอ Master`;
-            readyArea.style.display = 'none';
-        } else if (data.master) {
-            statusText = `มี Master: ${data.master} | รอ Player`;
-            readyArea.style.display = 'none';
-        }
-        statusElement.textContent = statusText;
-
-        // จัดการสถานะปุ่ม Join สำหรับทุกห้อง
-        for (let roomNum = 1; roomNum <= TOTAL_ROOMS; roomNum++) {
-            const pBtn = document.getElementById(`join-player-${roomNum}`);
-            const mBtn = document.getElementById(`join-master-${roomNum}`);
-            
-            const currentRoomData = (data.room === roomNum) ? data : {};
-
-            if (pBtn) {
-                // ปิดปุ่มถ้าห้องนั้นมี Player หรือถ้าเราเข้าร่วมห้องอื่นอยู่แล้ว
-                pBtn.disabled = !!currentRoomData.player || hasJoinedRoom;
+            if (hasJoinedRoom) {
+                showMessage("คุณได้เข้าร่วมห้องแล้ว หรือกำลังรอการจับคู่", 'info');
+                return;
             }
-            if (mBtn) {
-                // ปิดปุ่มถ้าห้องนั้นมี Master หรือถ้าเราเข้าร่วมห้องอื่นอยู่แล้ว
-                mBtn.disabled = !!currentRoomData.master || hasJoinedRoom;
-            }
-            
-            // หากห้องนี้คือห้องที่เราเข้าร่วมอยู่, ให้ปิดปุ่ม Join ของห้องนี้เสมอ
-            if (selectedRoom === roomNum && hasJoinedRoom) {
-                if (pBtn) pBtn.disabled = true;
-                if (mBtn) mBtn.disabled = true;
-            }
-        }
-    });
 
-    // Listener ใหม่: รับการตอบกลับสถานะห้องจาก Server
-    socket.on('myRoomStatusResponse', ({ inRoom, room, role, roomData }) => {
-        if (inRoom) {
-            console.log(`Server confirms you are still ${role} in Room ${room}.`);
-            selectedRoom = room;
+            // Set global state
+            selectedRoom = roomNumber;
             selectedRole = role;
-            hasJoinedRoom = true;
-            // อัปเดต UI ด้วย roomData ที่ Server ส่งมา (อาจจะเรียก requestRoomStatus อีกครั้ง)
-            socket.emit('requestRoomStatus'); 
-        } else {
-            console.log('Server confirms you are not in any active room. Resetting local state.');
-            // หาก Server บอกว่าไม่อยู่ในห้อง ให้รีเซ็ตสถานะ Client และเปิดปุ่มทั้งหมด
-            resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
+            hasJoinedRoom = true; // Set immediately to prevent double-joining
+
+            // Store room and role in localStorage for persistence across refreshes
+            localStorage.setItem('lastRoom', roomNumber);
+            localStorage.setItem('lastRole', role);
+
+            // Send join room request to server
+            socket.emit("joinRoom", { room: roomNumber, role: role, name: username });
+
+            // Provide immediate visual feedback on the UI
+            const statusElement = document.getElementById(`room-status-${roomNumber}`);
+            if (statusElement) {
+                statusElement.textContent = `กำลังรอคู่สำหรับ ${role}...`;
+            }
+            showMessage(`กำลังเข้าร่วม Room ${roomNumber} ในฐานะ ${role}...`, 'info');
+
+            disableAllJoinButtons(); // Disable all join buttons immediately
         }
-    });
 
-    // ฟังก์ชันสำหรับรีเซ็ตสถานะ Client และเปิดปุ่ม Join ทั้งหมด
-    function resetLocalStateAndEnableButtons() {
-        selectedRoom = null;
-        selectedRole = null;
-        hasJoinedRoom = false;
-        localStorage.removeItem('lastRoom');
-        localStorage.removeItem('lastRole');
-        enableAllJoinButtons(); // เปิดปุ่ม Join ทั้งหมด
-        socket.emit('requestRoomStatus'); // ขอสถานะห้องอีกครั้งเพื่อแสดงผลที่ถูกต้อง
-    }
+        // Disable all join buttons across all rooms
+        function disableAllJoinButtons() {
+            for (let i = 1; i <= TOTAL_ROOMS; i++) {
+                const playerBtn = document.getElementById(`join-player-${i}`);
+                const masterBtn = document.getElementById(`join-master-${i}`);
+                if (playerBtn) playerBtn.disabled = true;
+                if (masterBtn) masterBtn.disabled = true;
+            }
+        }
 
+        // Enable all join buttons and reset room UI states
+        function enableAllJoinButtons() {
+            for (let i = 1; i <= TOTAL_ROOMS; i++) {
+                const playerBtn = document.getElementById(`join-player-${i}`);
+                const masterBtn = document.getElementById(`join-master-${i}`);
+                if (playerBtn) playerBtn.disabled = false;
+                if (masterBtn) masterBtn.disabled = false;
 
-    socket.on("userCount", count => {
-        document.getElementById("userCount").textContent = `ผู้เล่นออนไลน์: ${count} คน`;
-    });
+                // Hide ready area and reset ready button state
+                const readyArea = document.getElementById(`ready-area-${i}`);
+                if (readyArea) readyArea.style.display = 'none';
+                const readyBtn = document.getElementById(`ready-button-${i}`);
+                if (readyBtn) {
+                    readyBtn.disabled = false;
+                    readyBtn.textContent = "พร้อม!";
+                }
+                // Reset room status text
+                const statusElement = document.getElementById(`room-status-${i}`);
+                if (statusElement) statusElement.textContent = 'ว่าง';
+            }
+        }
 
-    socket.on("chatMessage", ({ user, text }) => {
-        const box = document.getElementById("chatMessages");
-        const msg = document.createElement("div");
-        msg.textContent = `${user}: ${text}`;
-        box.appendChild(msg);
-        box.scrollTop = box.scrollHeight;
-    });
+        // Reset local client state and enable all join buttons
+        function resetLocalStateAndEnableButtons() {
+            selectedRoom = null;
+            selectedRole = null;
+            hasJoinedRoom = false;
+            localStorage.removeItem('lastRoom');
+            localStorage.removeItem('lastRole');
+            enableAllJoinButtons(); // Re-enables all join buttons
+            socket.emit('requestRoomStatus'); // Request updated room statuses from server
+        }
 
-    socket.on('redirect', (url) => {
-        console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
-        // ล้างค่าใน localStorage เมื่อกำลังจะเปลี่ยนหน้าไปหน้าเกม
-        localStorage.removeItem('lastRoom');
-        localStorage.removeItem('lastRole');
-        window.location.href = url;
-    });
+        // --- Socket Listeners for Server Events ---
 
-    socket.on('roomError', (message) => {
-        alert(message);
-        // ถ้าเกิด Error ตอน join room, ให้ผู้เล่นสามารถเลือกห้องใหม่ได้
-        resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
-    });
+        // Listener for updating room status from the server
+        socket.on("roomStatusUpdate", (data) => {
+            // data will contain { room: roomNumber, player: playerName, master: masterName, readyToStart: boolean, playerReady: boolean, masterReady: boolean }
+            const roomDiv = document.getElementById(`room-${data.room}`);
+            if (!roomDiv) return;
 
-    socket.on('partnerDisconnected', (message) => {
-        alert(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้");
-        // รีเซ็ตสถานะ Client เพื่อให้เข้าร่วมห้องใหม่ได้
-        resetLocalStateAndEnableButtons(); // ใช้ฟังก์ชันนี้เพื่อรีเซ็ตทั้งหมด
-    });
+            const statusElement = document.getElementById(`room-status-${data.room}`);
+            const readyArea = document.getElementById(`ready-area-${data.room}`);
+            const readyBtn = document.getElementById(`ready-button-${data.room}`);
+            const joinPlayerBtn = document.getElementById(`join-player-${data.room}`);
+            const joinMasterBtn = document.getElementById(`join-master-${data.room}`);
 
-  </script>
+            let statusText = "ว่าง";
+            let canJoinPlayer = !data.player;
+            let canJoinMaster = !data.master;
+
+            if (data.player && data.master) {
+                statusText = `ครบ: ${data.player} (Player), ${data.master} (Master)`;
+                // Show ready area if this is the room the current user is in
+                if (data.room === selectedRoom && hasJoinedRoom) {
+                    readyArea.style.display = 'flex';
+                    if (readyBtn) {
+                        if ((selectedRole === 'player' && data.playerReady) || (selectedRole === 'master' && data.masterReady)) {
+                            readyBtn.disabled = true;
+                            readyBtn.textContent = (selectedRole === 'player' && !data.masterReady) ? "รอ Master กดยืนยัน..." :
+                                                   (selectedRole === 'master' && !data.playerReady) ? "รอ Player กดยืนยัน..." :
+                                                   "ทั้งคู่พร้อมแล้ว! รอเริ่มเกม...";
+                        } else {
+                            readyBtn.disabled = false;
+                            readyBtn.textContent = "พร้อม!";
+                        }
+                    }
+                } else { // Current user is not in this full room
+                    readyArea.style.display = 'none';
+                }
+                canJoinPlayer = false; // Room is full
+                canJoinMaster = false; // Room is full
+            } else if (data.player) {
+                statusText = `มี Player: ${data.player} | รอ Master`;
+                readyArea.style.display = 'none';
+                canJoinPlayer = false; // Player slot taken
+                canJoinMaster = true; // Master slot available
+            } else if (data.master) {
+                statusText = `มี Master: ${data.master} | รอ Player`;
+                readyArea.style.display = 'none';
+                canJoinPlayer = true; // Player slot available
+                canJoinMaster = false; // Master slot taken
+            }
+            statusElement.textContent = statusText;
+
+            // Manage join button states for the current room
+            if (joinPlayerBtn) {
+                // Disable if already joined any room, or if the player slot is taken
+                joinPlayerBtn.disabled = hasJoinedRoom || !canJoinPlayer;
+            }
+            if (joinMasterBtn) {
+                // Disable if already joined any room, or if the master slot is taken
+                joinMasterBtn.disabled = hasJoinedRoom || !canJoinMaster;
+            }
+
+            // If the current user is in this specific room, ensure its join buttons are disabled
+            if (selectedRoom === data.room && hasJoinedRoom) {
+                if (joinPlayerBtn) joinPlayerBtn.disabled = true;
+                if (joinMasterBtn) joinMasterBtn.disabled = true;
+            }
+        });
+
+        // Listener: Receive room status response from the server after reconnect/refresh
+        socket.on('myRoomStatusResponse', ({ inRoom, room, role, roomData }) => {
+            if (inRoom) {
+                console.log(`Server confirms you are still ${role} in Room ${room}.`);
+                selectedRoom = room;
+                selectedRole = role;
+                hasJoinedRoom = true;
+                // Request full room status update to refresh all UI
+                socket.emit('requestRoomStatus');
+                showMessage(`กลับสู่ Room ${room} ในฐานะ ${role}`, 'success');
+            } else {
+                console.log('Server confirms you are not in any active room. Resetting local state.');
+                // If server says not in room, reset client state and enable all buttons
+                resetLocalStateAndEnableButtons();
+                showMessage('คุณไม่อยู่ในห้องใดๆ กรุณาเข้าร่วมใหม่', 'info');
+            }
+        });
+
+        // Listener for online user count updates
+        socket.on("userCount", count => {
+            userCountElement.textContent = `ผู้เล่นออนไลน์: ${count} คน`;
+        });
+
+        // Listener for incoming chat messages
+        socket.on("chatMessage", ({ user, text }) => {
+            const msg = document.createElement("div");
+            msg.textContent = `${user}: ${text}`;
+            chatMessagesBox.appendChild(msg);
+            chatMessagesBox.scrollTop = chatMessagesBox.scrollHeight; // Scroll to bottom
+        });
+
+        // Listener for redirection command from server (e.g., game start)
+        socket.on('redirect', (url) => {
+            console.log('Server สั่งให้เปลี่ยนหน้าไป:', url);
+            // Clear localStorage values when redirecting to game page
+            localStorage.removeItem('lastRoom');
+            localStorage.removeItem('lastRole');
+            showMessage("เกมกำลังจะเริ่ม! กำลังเปลี่ยนหน้า...", 'success');
+            setTimeout(() => {
+                window.location.href = url;
+            }, 1500); // Give time to show message before redirect
+        });
+
+        // Listener for room errors from server
+        socket.on('roomError', (message) => {
+            showMessage(message, 'error');
+            // If an error occurs during room join, allow player to select a new room
+            resetLocalStateAndEnableButtons();
+        });
+
+        // Listener for partner disconnection in a room
+        socket.on('partnerDisconnected', (message) => {
+            showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
+            // Reset client state to allow joining new rooms
+            resetLocalStateAndEnableButtons();
+        });
+
+    </script>
 </body>
 </html>
-
