@@ -1,10 +1,11 @@
-// script.js - WebRTC + Socket.IO client logic for 1-on-1 room connection
+// script.js - WebRTC + Socket.IO client logic with role awareness
 
 window.addEventListener('DOMContentLoaded', async () => {
   const socket = io();
 
   const urlParams = new URLSearchParams(window.location.search);
   const roomId = urlParams.get('room');
+  const role = urlParams.get('role');
 
   let localStream;
   let peerConnection;
@@ -21,7 +22,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   async function startLocalStream() {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
+      if (localVideo) localVideo.srcObject = localStream;
     } catch (err) {
       console.error('📛 Error getting media:', err);
     }
@@ -40,34 +41,36 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     peerConnection.onicecandidate = event => {
       if (event.candidate) {
-        socket.emit('ice-candidate', {
-          roomId,
-          candidate: event.candidate
-        });
+        socket.emit('ice-candidate', { roomId, candidate: event.candidate });
       }
     };
   }
 
-  // 🔌 Socket Events
-  socket.emit('join-room', { roomId });
+  socket.emit('join-room', { roomId, role });
 
   socket.on('ready', async () => {
-    await createPeerConnection();
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('offer', { roomId, offer });
+    if (role === 'master') {
+      await createPeerConnection();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socket.emit('offer', { roomId, offer });
+    }
   });
 
   socket.on('offer', async offer => {
-    await createPeerConnection();
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    socket.emit('answer', { roomId, answer });
+    if (role === 'player') {
+      await createPeerConnection();
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('answer', { roomId, answer });
+    }
   });
 
   socket.on('answer', async answer => {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    if (role === 'master') {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    }
   });
 
   socket.on('ice-candidate', async candidate => {
