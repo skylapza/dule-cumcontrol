@@ -1,20 +1,21 @@
-
 // แก้ไข script.js โดยใช้ ID ปุ่มที่ตรงกับ HTML ล่าสุด และแทน alert ด้วย messageBox พร้อมรองรับ WebRTC และออกห้อง
 
 window.addEventListener('DOMContentLoaded', () => {
     const socket = io();
 
+    // ✅ ดึง room และ role จาก URL อย่างถูกต้อง
+    const urlParams = new URLSearchParams(window.location.search);
+    let myRoom = urlParams.get('room');
+    let myRole = urlParams.get('role');
+
     let peerConnection;
     let localStream;
-    let myRole;
-    let myRoom;
 
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
     const gameStatusElement = document.getElementById('gameStatus');
     const arousalBar = document.getElementById('arousalBar');
     const messageBox = document.getElementById('messageBox');
-    const strokeBar = document.getElementById('strokeBar');
 
     const rtcConfig = {
         iceServers: [
@@ -85,35 +86,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', () => {
                     socket.emit('masterCommand', { room: myRoom, type: command });
                     console.log(`[MASTER] Command sent: ${command}`);
-                    if (command.startsWith("speed") || command === "stop") {
-                        updateStrokeLabel(`สั่งให้ Player: ${command}`);
-                    }
                 });
             }
         });
     };
-
-    function updateStrokeLabel(text) {
-        const label = document.getElementById("strokeStatusLabel");
-        if (label) label.innerText = text;
-    }
 
     socket.on('masterCommand', ({ type }) => {
         console.log(`[PLAYER] คำสั่งที่ได้รับจาก Master: ${type}`);
         switch (type) {
             case 'ok': showMessage('Master: OK'); break;
             case 'no-cum': showMessage('Master: ห้ามแตก!'); break;
-            case 'now': showMessage('Master: แตกเดี๋ยวนี้!'); break;
-            case 'dont-touch': showMessage('Master: ห้ามแตะ!'); break;
-            case 'speed-up':
-                updateStrokeLabel('เร่งความเร็ว');
-                break;
-            case 'speed-down':
-                updateStrokeLabel('ลดความเร็ว');
-                break;
-            case 'stop':
-                updateStrokeLabel('หยุด');
-                break;
+            case 'stop': showMessage('Master: สั่งให้หยุด'); break;
             default: console.log('Unknown command:', type);
         }
     });
@@ -169,10 +152,6 @@ window.addEventListener('DOMContentLoaded', () => {
     socket.on('partnerDisconnected', (msg) => {
         showMessage(msg);
         setTimeout(() => window.location.href = '/lobby.html', 3000);
-    });
-
-    socket.on('redirect', (url) => {
-        window.location.href = url;
     });
 
     function showMessage(text) {
