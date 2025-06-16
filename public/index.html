@@ -1,113 +1,254 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dule CumControl 💦</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: linear-gradient(to bottom, #1d0033, #32004d);
-      color: white;
-      text-align: center;
-      padding: 50px 20px;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    h1 {
-      color: #e0b3ff;
-      margin-bottom: 30px;
-    }
-    input {
-      padding: 10px;
-      font-size: 16px;
-      width: 80%;
-      max-width: 300px;
-      border-radius: 8px;
-      border: none;
-      background-color: #2b003f;
-      color: white;
-      text-align: center;
-      box-sizing: border-box; /* Include padding in element's total width and height */
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 16px;
-      border-radius: 8px;
-      background-color: #6a0dad;
-      color: white;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    button:hover {
-      background-color: #8c2bdc;
-    }
-    .instructions {
-      margin-top: 50px;
-      background-color: rgba(0, 0, 0, 0.3);
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 500px;
-      text-align: left;
-    }
-    .instructions h2 {
-      color: #ffccff;
-      text-align: center;
-      margin-top: 0;
-    }
-    .instructions ol {
-      list-style-position: inside;
-      padding-left: 0;
-    }
-    .instructions li {
-      margin-bottom: 10px;
-      line-height: 1.5;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dule CumControl 💦</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for the entire page */
+        body {
+            font-family: 'Inter', sans-serif; /* Using Inter font for modern look */
+            background: linear-gradient(135deg, #1a0033, #32004d, #4d0066); /* More dynamic gradient */
+            color: #e0e0e0; /* Softer white */
+            text-align: center;
+            padding: 50px 20px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+
+        /* Main title styling */
+        h1 {
+            color: #e0b3ff;
+            margin-bottom: 30px;
+            font-size: 2.8em; /* Larger title */
+            text-shadow: 0 0 15px rgba(224, 179, 255, 0.6); /* Soft glow */
+            animation: pulse 2s infinite alternate; /* Subtle pulse animation */
+        }
+
+        /* Input field styling */
+        input {
+            padding: 12px 15px; /* More padding */
+            font-size: 18px; /* Larger font */
+            width: 90%; /* Wider input on smaller screens */
+            max-width: 350px; /* Max width for larger screens */
+            border-radius: 10px; /* More rounded corners */
+            border: 1px solid #6a0dad; /* Subtle border */
+            background-color: #2b003f;
+            color: white;
+            text-align: center;
+            box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* Softer shadow */
+            transition: all 0.3s ease;
+        }
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        input:focus {
+            outline: none;
+            border-color: #ffccff; /* Highlight on focus */
+            box-shadow: 0 0 20px rgba(106, 13, 173, 0.7); /* Stronger glow on focus */
+        }
+
+        /* Button styling */
+        button {
+            margin-top: 25px;
+            padding: 15px 30px; /* Larger button */
+            font-size: 18px;
+            border-radius: 10px; /* More rounded corners */
+            background-color: #6a0dad;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4); /* Deeper shadow */
+            font-weight: 600;
+        }
+        button:hover {
+            background-color: #8c2bdc;
+            transform: translateY(-3px); /* Lift effect */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        button:active {
+            transform: translateY(0); /* Press effect */
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Message box styling (replaces alert) */
+        #messageBox {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 0, 0, 0.3); /* Reddish for error */
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            max-width: 350px;
+            width: 90%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        #messageBox.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        #messageBox.success {
+            background-color: rgba(0, 128, 0, 0.3); /* Greenish for success */
+        }
+
+        /* Instructions section styling */
+        .instructions {
+            margin-top: 50px;
+            background-color: rgba(0, 0, 0, 0.4); /* Slightly darker background for contrast */
+            padding: 30px; /* More padding */
+            border-radius: 15px; /* More rounded */
+            max-width: 600px; /* Wider for better readability */
+            text-align: left;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); /* Deeper shadow */
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+        }
+        .instructions h2 {
+            color: #ffccff;
+            text-align: center;
+            margin-top: 0;
+            font-size: 2em;
+            margin-bottom: 25px;
+        }
+        .instructions ol {
+            list-style-position: inside;
+            padding-left: 0;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .instructions li {
+            margin-bottom: 12px;
+            padding-left: 10px; /* Indent list items */
+        }
+        .instructions li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.2em;
+            }
+            input, button {
+                width: 95%;
+            }
+            .instructions {
+                padding: 20px;
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+            .instructions h2 {
+                font-size: 1.8em;
+            }
+            .instructions ol {
+                font-size: 1em;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>Dule CumControl 💦</h1>
-  <input type="text" id="username" placeholder="ใส่ชื่อเล่นของคุณที่นี่" maxlength="20" />
-  <button onclick="start()">เริ่มเกม</button>
+    <h1>Dule CumControl 💦</h1>
+    <input type="text" id="username" placeholder="ใส่ชื่อเล่นของคุณที่นี่" maxlength="20" aria-label="ชื่อผู้ใช้งาน" />
+    <button id="startButton">เริ่มเกม</button>
 
-  <div class="instructions">
-    <h2>วิธีการเล่น</h2>
-    <ol>
-      <li>ใส่ชื่อเล่นของคุณ แล้วเข้าสู่ Lobby</li>
-      <li>เลือกบทบาท Player หรือ Master</li>
-      <li>กด “พร้อม” ทั้งสองฝั่งเพื่อเริ่มเกม</li>
-      <li>Master ควบคุม Player ด้วยคำสั่ง</li>
-      <li>เป้าหมาย: ห้ามหลั่งก่อนอนุญาต</li>
-    </ol>
-  </div>
+    <div id="messageBox" class="message-box"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
+    <div class="instructions">
+        <h2>วิธีการเล่น</h2>
+        <ol>
+            <li>ใส่ชื่อเล่นของคุณ แล้วเข้าสู่ Lobby</li>
+            <li>เลือกบทบาท Player หรือ Master</li>
+            <li>กด “พร้อม” ทั้งสองฝั่งเพื่อเริ่มเกม</li>
+            <li>Master ควบคุม Player ด้วยคำสั่ง</li>
+            <li>เป้าหมาย: ห้ามหลั่งก่อนอนุญาต</li>
+        </ol>
+    </div>
 
-    socket.on("username-status", (isAvailable) => {
-      if (isAvailable) {
-        localStorage.setItem("username", document.getElementById("username").value.trim());
-        window.location.href = "/lobby.html";
-      } else {
-        alert("ชื่อซ้ำ! กรุณาเปลี่ยนชื่ออื่น");
-      }
-    });
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const usernameInput = document.getElementById("username");
+        const startButton = document.getElementById("startButton");
+        const messageBox = document.getElementById("messageBox");
 
-    function start() {
-      const name = document.getElementById("username").value.trim();
-      if (!name) {
-        alert("กรุณาใส่ชื่อผู้ใช้งานก่อน!");
-        return;
-      }
-      socket.emit("checkUsername", name);
-    }
-  </script>
+        // Function to display messages (replaces alert)
+        function showMessage(message, type = 'error') {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Reset classes and show
+            if (type === 'success') {
+                messageBox.classList.add('success');
+            } else {
+                messageBox.classList.remove('success');
+            }
+            // Hide message after a few seconds
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+
+        // Listener for username status from server
+        socket.on("username-status", (isAvailable) => {
+            startButton.disabled = false; // Re-enable button
+            if (isAvailable) {
+                showMessage("กำลังเข้าสู่ Lobby...", 'success');
+                localStorage.setItem("username", usernameInput.value.trim());
+                // Short delay to show success message before redirecting
+                setTimeout(() => {
+                    window.location.href = "/lobby.html";
+                }, 1000);
+            } else {
+                showMessage("ชื่อซ้ำ! กรุณาเปลี่ยนชื่ออื่น");
+            }
+        });
+
+        // Function to start the game (called by button click)
+        function start() {
+            const name = usernameInput.value.trim();
+            if (!name) {
+                showMessage("กรุณาใส่ชื่อผู้ใช้งานก่อน!");
+                return;
+            }
+            startButton.disabled = true; // Disable button to prevent multiple clicks
+            showMessage("กำลังตรวจสอบชื่อ...", 'info'); // Provide immediate feedback
+            socket.emit("checkUsername", name);
+        }
+
+        // Event listener for button click
+        startButton.addEventListener('click', start);
+
+        // Allow pressing Enter key in the input field to trigger start()
+        usernameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                start();
+            }
+        });
+
+        // Focus on the username input field when the page loads
+        window.addEventListener('load', () => {
+            usernameInput.focus();
+        });
+    </script>
 </body>
 </html>
