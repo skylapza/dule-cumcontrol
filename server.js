@@ -1,410 +1,149 @@
-// Import necessary modules
-const express = require('express');
-const http = require('http');
-const { Server } = require("socket.io");
-const path = require('path'); // To serve static files
+// แก้ไข script.js โดยใช้ ID ปุ่มที่ตรงกับ HTML ล่าสุด และแทน alert ด้วย messageBox
 
-// Initialize Express app
-const app = express();
-// Create an HTTP server using the Express app
-const server = http.createServer(app);
-// Initialize Socket.IO server by passing the HTTP server instance
-const io = new Server(server);
+window.addEventListener('DOMContentLoaded', () => {
+    const socket = io();
 
-// Define the port the server will listen on
-const PORT = process.env.PORT || 3000;
+    let peerConnection;
+    let localStream;
+    let myRole;
+    let myRoom;
 
-// Serve static files from the 'public' directory
-// This means all your HTML, CSS, client-side JS, and sound files should be in a folder named 'public'
-app.use(express.static(path.join(__dirname, 'public')));
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const gameStatusElement = document.getElementById('gameStatus');
+    const arousalBar = document.getElementById('arousalBar');
+    const messageBox = document.getElementById('messageBox');
 
-// Define routes for your HTML pages
-// When a client requests the root URL '/', send the index.html file
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+    const rtcConfig = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+        ]
+    };
 
-// Route for the lobby page
-app.get('/lobby.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'lobby.html'));
-});
-
-// Route for the master control page
-app.get('/master_control.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'master_control.html'));
-});
-
-// Route for the player game page
-app.get('/player_game.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'player_game.html'));
-});
-
-// --- Socket.IO Server Logic ---
-// Global objects to keep track of connected users and active rooms
-const connectedUsers = {}; // Stores { socket.id: { id, username, room, role } }
-const rooms = {};           // Stores { roomNumber: { player, playerName, playerReady, master, masterName, masterReady, gameStarted } }
-
-// Helper function to handle room cleanup and partner notification
-function handleRoomLeave(socketId) {
-    const user = connectedUsers[socketId];
-    if (!user || !user.room) {
-        return; // User not found or not in a room, nothing to clean up
-    }
-
-    const roomToLeave = user.room;
-    // Check if the room actually exists on the server
-    if (!rooms[roomToLeave]) {
-        console.warn(`Attempted to clean up non-existent room: ${roomToLeave} for user ${user.username}`);
-        return;
-    }
-
-    let leavingRole = user.role; // Get role from connectedUsers object
-    let leavingUsername = user.username;
-    let partnerSocketId = null;
-
-    // Determine the leaving user's role and their partner's socket ID
-    // Then clear the leaving user's info from the room
-    if (rooms[roomToLeave].player === socketId) {
-        partnerSocketId = rooms[roomToLeave].master;
-        delete rooms[roomToLeave].player; // Remove player from room
-        delete rooms[roomToLeave].playerName;
-        rooms[roomToLeave].playerReady = false; // Reset player ready status
-        rooms[roomToLeave].gameStarted = false; // Reset game started status for the room
-    } else if (rooms[roomToLeave].master === socketId) {
-        partnerSocketId = rooms[roomToLeave].player;
-        delete rooms[roomToLeave].master; // Remove master from room
-        delete rooms[roomToLeave].masterName;
-        rooms[roomToLeave].masterReady = false; // Reset master ready status
-        rooms[roomToLeave].gameStarted = false; // Reset game started status for the room
-    } else {
-        // This case should ideally not happen if user.room is accurate
-        console.warn(`User ${user.username} (${socketId}) claims to be in room ${roomToLeave} but their role (${user.role}) doesn't match.`);
-        // Attempt to remove them from any role just in case
-        if (rooms[roomToLeave].player === socketId) { delete rooms[roomToLeave].player; delete rooms[roomToLeave].playerName; rooms[roomToLeave].playerReady = false; rooms[roomToLeave].gameStarted = false; }
-        if (rooms[roomToLeave].master === socketId) { delete rooms[roomToLeave].master; delete rooms[roomToLeave].masterName; rooms[roomToLeave].masterReady = false; rooms[roomToLeave].gameStarted = false; }
-    }
-
-    console.log(`${leavingUsername} (${leavingRole}) กำลังออกจากห้อง ${roomToLeave}.`);
-
-    // If a partner exists and is still connected, notify them and redirect to lobby
-    if (partnerSocketId && io.sockets.sockets.get(partnerSocketId)) {
-        console.log(`แจ้งเตือนคู่ ${partnerSocketId} ในห้อง ${roomToLeave} ว่า ${leavingUsername} (${leavingRole}) ออกจากห้อง`);
-        io.to(partnerSocketId).emit("partnerDisconnected", `${leavingRole} ของคุณ (${leavingUsername}) ออกจากห้องแล้ว!`);
-        io.to(partnerSocketId).emit("redirect", "/lobby.html"); // Redirect partner back to lobby
-    }
-
-    // Clear room and role information from the connectedUsers object
-    if (connectedUsers[socketId]) { // Ensure it still exists before modification
-        connectedUsers[socketId].room = null;
-        connectedUsers[socketId].role = null;
-    }
-
-    // Clean up the room if both players have left
-    if (!rooms[roomToLeave].player && !rooms[roomToLeave].master) {
-        delete rooms[roomToLeave];
-        console.log(`ห้อง ${roomToLeave} ว่างเปล่าและถูกลบแล้ว.`);
-    } else {
-        // If the room is not empty (e.g., one player remains), update its status for remaining player and lobby
-        io.to(roomToLeave).emit("roomStatusUpdate", {
-            room: roomToLeave,
-            player: rooms[roomToLeave].playerName || null,
-            master: rooms[roomToLeave].masterName || null,
-            readyToStart: rooms[roomToLeave].player && rooms[roomToLeave].master && rooms[roomToLeave].playerReady && rooms[roomToLeave].masterReady,
-            playerReady: rooms[roomToLeave].playerReady,
-            masterReady: rooms[roomToLeave].masterReady
-        });
-    }
-    // Always update the lobby view (for all connected clients) to reflect changes in room status
-    io.emit("roomStatusUpdate", {
-        room: roomToLeave,
-        player: rooms[roomToLeave].playerName || null,
-        master: rooms[roomToLeave].masterName || null,
-        readyToStart: rooms[roomToLeave].player && rooms[roomToLeave].master && rooms[roomToLeave].playerReady && rooms[roomToLeave].masterReady,
-        playerReady: rooms[roomToLeave].playerReady,
-        masterReady: rooms[roomToLeave].masterReady
-    });
-}
-
-
-// Event listener for new Socket.IO connections
-io.on("connection", (socket) => {
-  console.log("👤 ผู้ใช้เชื่อมต่อ:", socket.id);
-  // Store initial user data
-  connectedUsers[socket.id] = { id: socket.id, username: null, room: null, role: null };
-  // Emit the updated total user count to all connected clients
-  io.emit("userCount", Object.keys(connectedUsers).length);
-
-  // Event: Client requests status of all rooms (typically on entering Lobby)
-  socket.on('requestRoomStatus', () => {
-    // Iterate through all existing rooms and send their status to the requesting client
-    for (const roomNum in rooms) {
-      if (rooms.hasOwnProperty(roomNum)) {
-        const roomData = rooms[roomNum];
-        socket.emit("roomStatusUpdate", {
-          room: parseInt(roomNum), // Ensure room number is an integer
-          player: roomData.playerName || null,
-          master: roomData.masterName || null,
-          // Determine if the room is ready to start (both roles filled and both ready)
-          readyToStart: roomData.player && roomData.master && roomData.playerReady && roomData.masterReady,
-          playerReady: roomData.playerReady || false,
-          masterReady: roomData.masterReady || false
-        });
-      }
-    }
-  });
-
-  // Event: Client requests to check status of a room they might have been in (e.g., after a refresh)
-  socket.on('checkMyRoomStatus', ({ room, role }) => {
-      // Verify if the current socket is indeed associated with the given room and role on the server
-      if (rooms[room] &&
-          ((role === 'player' && rooms[room].player === socket.id) ||
-           (role === 'master' && rooms[room].master === socket.id))) {
-          // If server confirms the user is in the room, send back confirmation and room data
-          socket.emit('myRoomStatusResponse', {
-              inRoom: true,
-              room: room,
-              role: role,
-              roomData: {
-                  player: rooms[room].playerName || null,
-                  master: rooms[room].masterName || null,
-                  playerReady: rooms[room].playerReady || false,
-                  masterReady: rooms[room].masterReady || false
-              }
-          });
-      } else {
-          // If server does not find the user in that room, send back negative confirmation
-          socket.emit('myRoomStatusResponse', { inRoom: false });
-      }
-  });
-
-  // Event: Client requests to check if a username is available
-  socket.on("checkUsername", (username) => {
-    // Check if any other connected user (excluding the current socket) is using this username
-    const isUsernameTaken = Object.values(connectedUsers).some(user => user.username === username && user.id !== socket.id);
-    if (isUsernameTaken) {
-      socket.emit("username-status", false); // Username is taken
-    } else {
-      // Assign the username to the current socket and connectedUsers object
-      connectedUsers[socket.id].username = username;
-      socket.username = username; // Also store directly on the socket object for convenience
-      socket.emit("username-status", true); // Username is available
-      console.log(`ชื่อผู้ใช้ตั้งค่าสำหรับ ${socket.id}: ${username}`);
-    }
-  });
-
-  // Event: Client attempts to join a room
-  socket.on("joinRoom", ({ room, role, name }) => {
-    // Basic validation: ensure username is provided
-    if (!name) {
-      return socket.emit("roomError", "กรุณาใส่ชื่อผู้ใช้งานก่อนเข้าร่วมห้อง!");
-    }
-    // Prevent joining if already in another room
-    if (connectedUsers[socket.id].room) {
-        return socket.emit("roomError", "คุณได้เข้าร่วมห้องอื่นไปแล้ว!");
-    }
-
-    // Initialize room data if it doesn't exist
-    if (!rooms[room]) {
-      rooms[room] = {
-        player: null,
-        playerName: null,
-        playerReady: false,
-        master: null,
-        masterName: null,
-        masterReady: false,
-        gameStarted: false
-      };
-    }
-
-    // Assign socket to player or master role in the room
-    if (role === "player") {
-      if (rooms[room].player) {
-        return socket.emit("roomError", "ฝั่ง Player มีคนแล้วในห้องนี้!");
-      }
-      rooms[room].player = socket.id;
-      rooms[room].playerName = name;
-      rooms[room].playerReady = false; // Reset ready status on new join
-    } else if (role === "master") {
-      if (rooms[room].master) {
-        return socket.emit("roomError", "ฝั่ง Master มีคนแล้วในห้องนี้!");
-      }
-      rooms[room].master = socket.id;
-      rooms[room].masterName = name;
-      rooms[room].masterReady = false; // Reset ready status on new join
-    } else {
-        return socket.emit("roomError", "บทบาทไม่ถูกต้อง!"); // Invalid role provided
-    }
-
-    // Make the socket join the Socket.IO room (group)
-    socket.join(room);
-    // Store room and role on the socket object for easy access
-    socket.room = room;
-    socket.role = role;
-    socket.username = name; // Ensure username is stored on socket as well
-
-    // Update connectedUsers global object
-    connectedUsers[socket.id].room = room;
-    connectedUsers[socket.id].role = role;
-    connectedUsers[socket.id].username = name;
-
-    console.log(`${name} (${role}) เข้าร่วม Room ${room}`);
-
-    // Emit updated room status to everyone in the joined room
-    io.to(room).emit("roomStatusUpdate", {
-      room: room,
-      player: rooms[room].playerName || null,
-      master: rooms[room].masterName || null,
-      readyToStart: rooms[room].player && rooms[room].master && rooms[room].playerReady && rooms[room].masterReady,
-      playerReady: rooms[room].playerReady,
-      masterReady: rooms[room].masterReady
-    });
-    // Also emit to all clients (Lobby view)
-    io.emit("roomStatusUpdate", {
-      room: room,
-      player: rooms[room].playerName || null,
-      master: rooms[room].masterName || null,
-      readyToStart: rooms[room].player && rooms[room].master && rooms[room].playerReady && rooms[room].masterReady,
-      playerReady: rooms[room].playerReady,
-      masterReady: rooms[room].masterReady
-    });
-  });
-
-  // Event: User clicks "Ready" button
-  socket.on("playerReady", ({ room, role }) => {
-    // Validate if the user is indeed in the specified room and role
-    if (!rooms[room] || (role === 'player' && rooms[room].player !== socket.id) || (role === 'master' && rooms[room].master !== socket.id)) {
-      console.log(`ข้อผิดพลาด: ${socket.id} (บทบาท: ${role}) พยายามกดยืนยันในห้อง ${room} แต่ไม่ใช่คนในห้อง`);
-      return socket.emit("roomError", "ไม่สามารถกดยืนยันได้!");
-    }
-
-    // Set ready status based on role
-    if (role === "player") {
-      rooms[room].playerReady = true;
-      console.log(`${socket.username} (Player) ใน Room ${room} พร้อมแล้ว.`);
-    } else if (role === "master") {
-      rooms[room].masterReady = true;
-      console.log(`${socket.username} (Master) ใน Room ${room} พร้อมแล้ว.`);
-    }
-
-    // Broadcast updated room status to all in the room and to the lobby
-    io.to(room).emit("roomStatusUpdate", {
-      room: room,
-      player: rooms[room].playerName || null,
-      master: rooms[room].masterName || null,
-      readyToStart: rooms[room].player && rooms[room].master && rooms[room].playerReady && rooms[room].masterReady,
-      playerReady: rooms[room].playerReady,
-      masterReady: rooms[room].masterReady
-    });
-    io.emit("roomStatusUpdate", {
-        room: room,
-        player: rooms[room].playerName || null,
-        master: rooms[room].masterName || null,
-        readyToStart: rooms[room].player && rooms[room].master && rooms[room].playerReady && rooms[room].masterReady,
-        playerReady: rooms[room].playerReady,
-        masterReady: rooms[room].masterReady
-    });
-
-    // If both Player and Master are ready and present in the room, start the game
-    if (rooms[room].playerReady && rooms[room].masterReady && rooms[room].player && rooms[room].master) {
-      console.log(`ทั้ง Player และ Master ใน Room ${room} พร้อมแล้ว! เริ่มเกม...`);
-      rooms[room].gameStarted = true; // Mark game as started
-
-      // Redirect Player to player_game.html
-      io.to(rooms[room].player).emit("redirect", `/player_game.html?room=${room}&role=player`);
-      // Redirect Master to master_control.html
-      io.to(rooms[room].master).emit("redirect", `/master_control.html?room=${room}&role=master`);
-    }
-  });
-
-  // Event: Chat message received
-  socket.on("chatMessage", ({ room, text, user }) => {
-    // If room is null, it's a global chat message, send to all
-    if (!room) {
-        io.emit("chatMessage", { user: user, text: text });
-    } else {
-        // Otherwise, send only to clients in that specific room
-        io.to(room).emit("chatMessage", { user: user, text: text });
-    }
-  });
-
-  // Event: WebRTC Signaling data received (for video/audio calls)
-  socket.on('signal', (data) => {
-    // Forward the WebRTC signal to the partner in the same room
-    if (socket.room && rooms[socket.room]) {
-      const roomInfo = rooms[socket.room];
-      // Determine partner's socket ID
-      const partnerSocketId = (socket.id === roomInfo.player) ? roomInfo.master : roomInfo.player;
-
-      if (partnerSocketId) {
-        // Check if partner is still connected before sending
-        if (io.sockets.sockets.get(partnerSocketId)) {
-            console.log(`ส่งสัญญาณจาก ${socket.username} (${socket.role}) ไปยังคู่ในห้อง ${socket.room}`);
-            io.to(partnerSocketId).emit('signal', data);
-        } else {
-            console.log(`คู่ (${partnerSocketId}) ในห้อง ${socket.room} ไม่ได้เชื่อมต่ออยู่ ไม่สามารถส่งสัญญาณได้.`);
+    async function startLocalStream() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (localVideo) {
+                localVideo.srcObject = localStream;
+            }
+            return localStream;
+        } catch (error) {
+            console.error('Error accessing media devices.', error);
+            showMessage('ไม่สามารถเข้าถึงกล้องและไมโครโฟนได้!');
+            return null;
         }
-      } else {
-          console.log(`ไม่พบคู่สำหรับ ${socket.id} ในห้อง ${socket.room}.`);
-      }
     }
-  });
 
-  // NEW Event: Master sends a game command to Player
-  socket.on('masterCommand', ({ room, type, message, bpm }) => {
-      // Ensure the room exists and there's a player to receive the command
-      if (rooms[room] && rooms[room].player) {
-          io.to(rooms[room].player).emit('masterCommand', { type, message, bpm });
-          console.log(`Master (${socket.username}) ส่งคำสั่ง '${type}' ไปยัง Player ในห้อง ${room}`);
-      }
-  });
-
-  // NEW Event: Player sends a game command to Master
-  socket.on('playerCommand', ({ room, type, message }) => {
-      // Ensure the room exists and there's a master to receive the command
-      if (rooms[room] && rooms[room].master) {
-          io.to(rooms[room].master).emit('playerCommand', { type, message });
-          console.log(`Player (${socket.username}) ส่งคำสั่ง '${type}' ไปยัง Master ในห้อง ${room}`);
-      }
-  });
-
-  // NEW Event: Player sends arousal level update to Master
-  socket.on('playerArousalUpdate', (arousalLevel) => {
-      // Ensure the user is in a room and there's a master to receive the update
-      if (socket.room && rooms[socket.room] && rooms[socket.room].master) {
-          io.to(rooms[socket.room].master).emit('playerArousalUpdate', arousalLevel);
-          console.log(`Player (${socket.username}) ส่งการอัปเดตระดับความเงี่ยน: ${arousalLevel}`);
-      }
-  });
-
-  // Event: Client explicitly leaves a room (e.g., clicks "Back to Lobby")
-  socket.on('leaveRoom', () => {
-    // Call the centralized handler for room leaving
-    handleRoomLeave(socket.id);
-    // Additionally, make the socket leave the Socket.IO room explicitly for client-initiated leave
-    if (socket.room) { // Ensure socket.room is set before calling leave
-        socket.leave(socket.room);
-        // Clear local socket state after leaving the room
-        socket.room = null;
-        socket.role = null;
+    function stopLocalStream() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+            if (localVideo) {
+                localVideo.srcObject = null;
+            }
+        }
     }
-  });
 
-  // Event: Socket disconnects from the server (e.g., closing browser, network issue)
-  socket.on("disconnect", () => {
-    console.log("❌ ผู้ใช้ตัดการเชื่อมต่อ:", socket.id);
-    const disconnectedSocketId = socket.id; // Store ID before deletion
+    function createPeerConnection(room, role) {
+        peerConnection = new RTCPeerConnection(rtcConfig);
 
-    // Handle room leave logic first using the helper function
-    handleRoomLeave(disconnectedSocketId);
+        if (localStream) {
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        }
 
-    // Finally, remove the user from the global connectedUsers list
-    delete connectedUsers[disconnectedSocketId];
-    // Update the total user count for all clients
-    io.emit("userCount", Object.keys(connectedUsers).length);
-  });
-});
+        peerConnection.ontrack = (event) => {
+            if (remoteVideo && event.streams && event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.style.display = 'block';
+            }
+        };
 
-// Start the HTTP server listening on the specified port
-server.listen(PORT, () => {
-  console.log(`🚀 เซิร์ฟเวอร์กำลังทำงานบนพอร์ต ${PORT}`);
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('signal', { room: room, candidate: event.candidate });
+            }
+        };
+    }
+
+    // ========================
+    // ปุ่มควบคุมฝั่ง Master
+    // ========================
+    const bindMasterControls = () => {
+        const commandButtons = [
+            { id: 'masterOkBtn', command: 'ok' },
+            { id: 'masterNoBtn', command: 'no-cum' },
+            { id: 'masterNowBtn', command: 'now' },
+            { id: 'masterDontTouchBtn', command: 'dont-touch' },
+            { id: 'speedUpBpmBtn', command: 'speed-up' },
+            { id: 'speedDownBpmBtn', command: 'speed-down' },
+            { id: 'stopBpmBtn', command: 'stop' },
+        ];
+
+        commandButtons.forEach(({ id, command }) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    socket.emit('masterCommand', { room: myRoom, type: command });
+                    console.log(`[MASTER] Command sent: ${command}`);
+                });
+            }
+        });
+    };
+
+    // ==========================
+    // รับคำสั่งจาก Master ฝั่ง Player
+    // ==========================
+    socket.on('masterCommand', ({ type }) => {
+        console.log(`[PLAYER] คำสั่งที่ได้รับจาก Master: ${type}`);
+        switch (type) {
+            case 'ok':
+                showMessage('Master: OK');
+                break;
+            case 'no-cum':
+                showMessage('Master: ห้ามแตก!');
+                break;
+            case 'stop':
+                showMessage('Master: สั่งให้หยุด');
+                break;
+            default:
+                console.log('Unknown command:', type);
+        }
+    });
+
+    // ==========================
+    // ส่ง arousal จาก Player
+    // ==========================
+    if (arousalBar) {
+        arousalBar.addEventListener('input', () => {
+            const level = parseInt(arousalBar.value);
+            socket.emit('playerArousalUpdate', level);
+        });
+    }
+
+    // ==========================
+    // รับ arousal ฝั่ง Master
+    // ==========================
+    socket.on('playerArousalUpdate', (level) => {
+        const bar = document.getElementById('arousalBar');
+        if (bar) {
+            bar.value = level;
+            console.log(`[MASTER] อัปเดตระดับ arousal: ${level}`);
+        }
+    });
+
+    // ==========================
+    // แสดงข้อความแบบ custom
+    // ==========================
+    function showMessage(text) {
+        if (messageBox) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            setTimeout(() => messageBox.style.display = 'none', 3000);
+        } else {
+            alert(text); // fallback หากไม่มี messageBox
+        }
+    }
+
+    bindMasterControls();
 });
