@@ -1,5 +1,4 @@
 // script.js - WebRTC + Socket.IO client logic with role awareness
-
 window.addEventListener('DOMContentLoaded', async () => {
   const socket = io();
 
@@ -30,15 +29,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   async function createPeerConnection() {
     peerConnection = new RTCPeerConnection(config);
-
     localStream.getTracks().forEach(track => {
       peerConnection.addTrack(track, localStream);
     });
-
     peerConnection.ontrack = event => {
       if (remoteVideo) remoteVideo.srcObject = event.streams[0];
     };
-
     peerConnection.onicecandidate = event => {
       if (event.candidate) {
         socket.emit('ice-candidate', { roomId, candidate: event.candidate });
