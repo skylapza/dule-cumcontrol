@@ -345,6 +345,18 @@
         let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
         let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
 
+        // NEW: WebRTC Config with STUN servers
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+                // สามารถเพิ่ม TURN servers ได้หากต้องการสำหรับการเชื่อมต่อผ่าน NAT ที่ซับซ้อนมาก
+            ]
+        };
+
         // Player Game Logic variables
         const maxArousal = 10;
         let playerArousalLevel = 5;
@@ -527,14 +539,7 @@
                 return;
             }
 
-            peerConnection = new RTCPeerConnection({
-                // Add ICE servers here for STUN/TURN (critical for real-world scenarios)
-                // For example:
-                // iceServers: [
-                //     { urls: 'stun:stun.l.google.com:19302' },
-                //     { urls: 'turn:YOUR_TURN_SERVER_URL', username: 'YOUR_USERNAME', credential: 'YOUR_PASSWORD' }
-                // ]
-            });
+            peerConnection = new RTCPeerConnection(rtcConfig); // <--- Updated to use rtcConfig
             console.log("RTCPeerConnection created.");
 
             // Add local stream tracks to peer connection if available
@@ -775,3 +780,4 @@
     </script>
 </body>
 </html>
+
