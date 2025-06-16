@@ -95,7 +95,7 @@
         button {
             padding: 0.8rem 1.6rem;
             font-size: 1rem;
-            border-radius: 0.75rem; /* Consistent rounded corners */
+            border-radius: 0.75rem;
             transition: all 0.3s ease;
             font-weight: 600;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
@@ -118,16 +118,16 @@
 
         /* Camera control buttons */
         .camera-controls button {
-            padding: 0.6rem 1.2rem; /* Adjusted padding */
-            font-size: 0.95rem; /* Adjusted font size */
-            border-radius: 0.6rem; /* Adjusted rounded corners */
+            padding: 0.6rem 1.2rem;
+            font-size: 0.95rem;
+            border-radius: 0.6rem;
         }
 
         /* Timer text */
         #playerGameTimer {
-            font-size: 1.2rem; /* Adjusted font size */
+            font-size: 1.2rem;
             margin-bottom: 1rem;
-            color: #b3e0ff; /* Consistent color with lobby */
+            color: #b3e0ff;
             font-weight: 600;
         }
 
@@ -191,7 +191,7 @@
             margin: 0.2rem; /* Add small margin for button spacing */
         }
         .arousal-max-label {
-            font-size: 0.8rem; /* Consistent font size */
+            font-size: 0.8rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.8);
         }
@@ -247,10 +247,10 @@
             visibility: visible;
         }
         #messageBox.success {
-            background-color: rgba(0, 128, 0, 0.3); /* Greenish for success */
+            background-color: rgba(0, 128, 0, 0.3);
         }
         #messageBox.info {
-            background-color: rgba(0, 100, 200, 0.3); /* Bluish for info */
+            background-color: rgba(0, 100, 200, 0.3);
         }
 
         /* Back to Lobby button */
@@ -270,10 +270,10 @@
         }
 
         /* Headings above videos */
-        .video-label-container { /* New container for video titles */
+        .video-label-container {
             text-align: center;
             margin-bottom: 0.5rem;
-            color: #b3e0ff; /* Light blue for video titles */
+            color: #b3e0ff;
             font-weight: 600;
         }
     </style>
@@ -306,7 +306,7 @@
                     <video id="localVideo" class="video-element" autoplay playsinline muted></video>
                 </div>
                 <div class="stroke-visualizer-container">
-                    <div id="strokeVisualizer" style="height: 60%"></div> <!-- Changed initial height here -->
+                    <div id="strokeVisualizer" style="height: 60%"></div>
                 </div>
             </div>
         </div>
@@ -339,13 +339,15 @@
         // Global socket connection
         const socket = io();
 
-        // WebRTC related variables
+        // Global variables for WebRTC and game state
         let peerConnection;
         let localStream;
         let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
         let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
+        let myRoom; // Global variable for current room
+        let myRole; // Global variable for current role
 
-        // NEW: WebRTC Config with STUN servers
+        // WebRTC Config with STUN servers
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -353,7 +355,6 @@
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
                 { urls: 'stun:stun4.l.google.com:19302' }
-                // สามารถเพิ่ม TURN servers ได้หากต้องการสำหรับการเชื่อมต่อผ่าน NAT ที่ซับซ้อนมาก
             ]
         };
 
@@ -380,14 +381,12 @@
         const playerSwapCameraBtn = document.getElementById('playerSwapCameraBtn');
         const playerStopCameraBtn = document.getElementById('playerStopCameraBtn');
         const strokeVisualizer = document.getElementById('strokeVisualizer');
-        const strokeVisualizerContainer = document.querySelector('.stroke-visualizer-container'); // Get the container
-        const messageBox = document.getElementById('messageBox'); // For custom notifications
+        const strokeVisualizerContainer = document.querySelector('.stroke-visualizer-container');
+        const messageBox = document.getElementById('messageBox');
 
 
         // Function to play stroke sound (Tone.js could be used for more control)
         function playStrokeSound() {
-            // Note: For actual deployment, you'll need to host 'stroke.mp3' or use an audio library like Tone.js
-            // For now, using standard Audio object. Browser auto-play policies might block this without user interaction.
             try {
                 const audio = new Audio('/sounds/stroke.mp3');
                 audio.volume = 0.3;
@@ -402,10 +401,8 @@
             messageBox.textContent = message;
             messageBox.className = 'message-box show'; // Reset classes and show
             messageBox.classList.add(type); // Add specific type class for styling
-            // Hide message after a few seconds
             setTimeout(() => {
                 messageBox.classList.remove('show');
-                // Remove type class after hiding to reset for next message
             }, 3000);
         }
 
@@ -416,58 +413,51 @@
             socket.emit("playerArousalUpdate", playerArousalLevel); // Emit to Master via Socket.IO
         }
 
-        // NEW: Function to synchronize stroke visualizer height with local video
+        // Function to synchronize stroke visualizer height with local video
         function syncStrokeVisualizerHeight() {
             if (localVideo && strokeVisualizerContainer && localVideo.style.display !== 'none') {
-                // Wait for the video to potentially render and get its actual height
                 requestAnimationFrame(() => {
                     const videoHeight = localVideo.offsetHeight;
-                    if (videoHeight > 0) { // Ensure video has a height
+                    if (videoHeight > 0) {
                         strokeVisualizerContainer.style.height = `${videoHeight}px`;
                     }
                 });
             } else {
-                 // Fallback height if video is hidden or not loaded
-                 // This ensures the container is visible from the start
-                 strokeVisualizerContainer.style.height = `200px`;
+                 strokeVisualizerContainer.style.height = `200px`; // Fallback height if video is hidden
             }
         }
 
         // Function to animate the stroke visualizer
         function animateStrokeVisualizer(bpm) {
-            if (strokeInterval) clearInterval(strokeInterval); // Clear previous interval
+            if (strokeInterval) clearInterval(strokeInterval);
 
-            if (bpm === 0) { // If BPM is 0, stop animation and reset visualizer
+            if (bpm === 0) {
                 strokeVisualizer.style.height = '0%';
-                strokeVisualizer.classList.remove('stroke-pulse'); // Ensure animation class is removed
+                strokeVisualizer.classList.remove('stroke-pulse');
                 return;
             }
 
-            const intervalMs = 60000 / bpm; // Time for one beat in milliseconds
+            const intervalMs = 60000 / bpm;
 
             strokeInterval = setInterval(() => {
-                // "Up" stroke
                 strokeVisualizer.style.height = '100%';
-                strokeVisualizer.classList.add('stroke-pulse'); // Add pulse animation
-                if (bpm >= 140) playStrokeSound(); // Play sound only for higher BPM
+                strokeVisualizer.classList.add('stroke-pulse');
+                if (bpm >= 140) playStrokeSound();
 
                 setTimeout(() => {
-                    // "Down" stroke
-                    strokeVisualizer.style.height = '60%'; // Return to the new default visible height
-                    // Remove class after the animation cycle completes to allow it to re-trigger
+                    strokeVisualizer.style.height = '60%';
                     setTimeout(() => {
                         strokeVisualizer.classList.remove('stroke-pulse');
-                    }, 300); // Should match or be slightly longer than pulseStroke animation duration
-                }, intervalMs / 2); // Half the interval for down stroke
+                    }, 300);
+                }, intervalMs / 2);
             }, intervalMs);
         }
 
         // Camera and WebRTC Functions
         async function startCamera(facingMode = 'user') {
-            // Stop any existing tracks before getting new stream
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
-                localVideo.srcObject = null; // Clear existing stream from video element
+                localVideo.srcObject = null;
             }
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({
@@ -475,27 +465,17 @@
                     audio: false // Player does not need to send audio
                 });
                 localVideo.srcObject = localStream;
-                localVideo.style.display = 'block'; // Show local video when stream starts
-                currentFacingMode = facingMode; // Update current facing mode
+                localVideo.style.display = 'block';
+                currentFacingMode = facingMode;
                 showMessage("กล้องเปิดแล้ว", 'success');
 
-                // Call sync height after video is displayed and has a chance to render
-                localVideo.onloadedmetadata = () => {
-                    syncStrokeVisualizerHeight();
-                };
-                if (localVideo.readyState >= 2) { // If video is already loaded
-                    syncStrokeVisualizerHeight();
-                }
-
-
-                // Add or replace tracks in the peer connection
                 if (peerConnection) {
                     const videoTrack = localStream.getVideoTracks()[0];
                     if (videoTrack) {
-                        if (videoSender) { // If a sender already exists, replace the track
+                        if (videoSender) {
                             await videoSender.replaceTrack(videoTrack);
                             console.log('Replaced video track in peer connection');
-                        } else { // First time adding video track to this peer connection
+                        } else {
                             videoSender = peerConnection.addTrack(videoTrack, localStream);
                             console.log('Added video track for the first time to peer connection');
                         }
@@ -520,10 +500,10 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
                 localVideo.srcObject = null;
-                localVideo.style.display = 'none'; // Hide local video when stopped
+                localVideo.style.display = 'none';
                 showMessage("กล้องปิดแล้ว", 'info');
             }
-            syncStrokeVisualizerHeight(); // Reset height when camera stops
+            syncStrokeVisualizerHeight();
         }
 
         async function switchCamera() {
@@ -533,53 +513,46 @@
 
         // WebRTC Setup: Create Peer Connection
         function createPeerConnection() {
-            // Check if peerConnection already exists to prevent re-creation
             if (peerConnection && peerConnection.connectionState !== 'closed') {
                 console.warn("Peer connection already exists and is not closed. Skipping creation.");
                 return;
             }
 
-            peerConnection = new RTCPeerConnection(rtcConfig); // <--- Updated to use rtcConfig
+            peerConnection = new RTCPeerConnection(rtcConfig);
             console.log("RTCPeerConnection created.");
 
-            // Add local stream tracks to peer connection if available
             if (localStream) {
                 const videoTrack = localStream.getVideoTracks()[0];
                 if (videoTrack) {
-                    videoSender = peerConnection.addTrack(videoTrack, localStream); // Store sender for replaceTrack
+                    videoSender = peerConnection.addTrack(videoTrack, localStream);
                 }
             }
 
-            // Event: When an ICE candidate is generated (for NAT traversal)
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
                     console.log('Sending ICE candidate:', event.candidate);
-                    socket.emit('signal', { candidate: event.candidate });
+                    socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom with the signal
                 }
             };
 
-            // Event: When remote tracks are received from the other peer
             peerConnection.ontrack = (event) => {
                 if (remoteVideo.srcObject !== event.streams[0]) {
                     remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.style.display = 'block'; // Show remote video when stream is received
+                    remoteVideo.style.display = 'block';
                     showMessage('ได้รับสตรีมวิดีโอจาก Master แล้ว', 'success');
                     console.log('Received remote stream');
                 }
             };
 
-            // Handle connection state changes
             peerConnection.onconnectionstatechange = (event) => {
                 console.log('WebRTC connection state:', peerConnection.connectionState);
                 if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
                     showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
-                    // Potentially trigger a reconnect or return to lobby
                 } else if (peerConnection.connectionState === 'connected') {
                     showMessage('เชื่อมต่อ WebRTC กับ Master สำเร็จ!', 'success');
                 }
             };
 
-            // Handle signaling state changes
             peerConnection.onsignalingstatechange = (event) => {
                 console.log('WebRTC signaling state:', peerConnection.signalingState);
             };
@@ -588,27 +561,36 @@
         // Socket.IO Listeners for WebRTC Signaling
         socket.on('paired', async ({ role, room }) => {
             showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
+            // Store room and role globally
+            myRoom = room;
+            myRole = role;
+
+            await startCamera(); // Start camera automatically when paired
             createPeerConnection(); // Create peer connection when paired
 
             // Player waits for offer from Master, then sends answer.
-            // If the Master is slow or disconnected, the Player might need to handle
-            // timeouts or re-pairing.
         });
 
         socket.on('signal', async (data) => {
+            // Ensure myRoom is set before processing signals
+            if (!myRoom && data.room) {
+                myRoom = data.room; // Try to get room from incoming signal if not set
+            }
             if (!peerConnection || peerConnection.signalingState === 'closed') {
-                createPeerConnection(); // Recreate if closed or not initialized
+                await startCamera(); // Ensure camera/stream is ready before creating PC
+                createPeerConnection();
             }
 
             if (data.sdp) {
+                console.log('Received SDP:', data.sdp.type);
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
                     if (data.sdp.type === 'offer') {
-                        // If Player receives an offer (as expected from Master)
                         console.log('Received offer from Master, creating answer...');
                         const answer = await peerConnection.createAnswer();
                         await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal', { sdp: answer });
+                        socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom with the answer signal
                         console.log('WebRTC answer sent.');
                     } else if (data.sdp.type === 'answer') {
                         console.log('Received answer from Master (unexpected for Player, but handled)');
@@ -618,9 +600,9 @@
                     showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
                 }
             } else if (data.candidate) {
+                console.log('Received ICE candidate:', data.candidate);
                 try {
                     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    console.log('Added ICE candidate');
                 } catch (e) {
                     console.error("Error adding ICE candidate:", e);
                     showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
@@ -634,33 +616,40 @@
             if (peerConnection && peerConnection.connectionState !== 'closed') {
                 peerConnection.close();
                 peerConnection = null;
-                videoSender = null; // Clear video sender reference
+                videoSender = null;
             }
-            stopCamera(); // Ensure local camera is off, which also calls syncStrokeVisualizerHeight
-            remoteVideo.srcObject = null; // Clear remote video source
-            remoteVideo.style.display = 'none'; // Hide remote video
+            stopCamera();
+            remoteVideo.srcObject = null;
+            remoteVideo.style.display = 'none';
             if (playerElapsedTimeInterval) {
-                clearInterval(playerElapsedTimeInterval); // Stop timer
+                clearInterval(playerElapsedTimeInterval);
                 playerElapsedTimeInterval = null;
             }
             if (strokeInterval) {
-                clearInterval(strokeInterval); // Stop stroke animation
+                clearInterval(strokeInterval);
                 strokeInterval = null;
-                strokeVisualizer.style.height = '0%'; // Reset visualizer
+                strokeVisualizer.style.height = '0%';
                 strokeVisualizer.classList.remove('stroke-pulse');
             }
             setTimeout(() => {
                 window.location.href = '/lobby.html';
-            }, 3000); // Redirect after notification
+            }, 3000);
         });
 
 
         // --- Event Listeners for DOM elements ---
         document.addEventListener('DOMContentLoaded', () => {
-            updateArousalDisplay(); // Initial display update for arousal
-            syncStrokeVisualizerHeight(); // Call initially in case video is somehow already loaded/visible
+            // Initialize myRoom and myRole from URL parameters on page load
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('room') && urlParams.has('role')) {
+                myRoom = parseInt(urlParams.get('room'));
+                myRole = urlParams.get('role');
+                console.log(`Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+            }
 
-            // Start Player's game timer (adjust this to be triggered by game start signal from server)
+            updateArousalDisplay();
+            syncStrokeVisualizerHeight();
+
             let seconds = 0;
             playerElapsedTimeInterval = setInterval(() => {
                 seconds++;
@@ -669,7 +658,6 @@
                 playerGameTimer.textContent = `เวลาเล่น: ${m}:${s}`;
             }, 1000);
 
-            // Arousal buttons
             increaseArousalBtn.addEventListener('click', () => {
                 if (playerArousalLevel < maxArousal) {
                     playerArousalLevel++;
@@ -681,7 +669,7 @@
             });
 
             decreaseArousalBtn.addEventListener('click', () => {
-                if (playerArousalLevel > 1) { // Assuming minimum arousal is 1
+                if (playerArousalLevel > 1) {
                     playerArousalLevel--;
                     updateArousalDisplay();
                     showMessage("ลดระดับความเงี่ยน", 'info');
@@ -690,37 +678,34 @@
                 }
             });
 
-            // Camera controls
             playerOpenCameraBtn.addEventListener('click', () => startCamera());
             playerSwapCameraBtn.addEventListener('click', switchCamera);
             playerStopCameraBtn.addEventListener('click', stopCamera);
 
-            // Player's request buttons
             playerSlowPleaseBtn.addEventListener('click', () => {
-                socket.emit('playerCommand', { type: 'slow_please', message: 'Player: slow please' });
+                socket.emit('playerCommand', { room: myRoom, type: 'slow_please', message: 'Player: slow please' }); // Pass myRoom
                 showMessage('ส่งคำขอ: Slow Please!', 'success');
             });
             playerICanCumBtn.addEventListener('click', () => {
-                socket.emit('playerCommand', { type: 'i_can_cum', message: 'Player: I can cum' });
+                socket.emit('playerCommand', { room: myRoom, type: 'i_can_cum', message: 'Player: I can cum' }); // Pass myRoom
                 showMessage('ส่งคำขอ: I Can Cum!', 'success');
             });
             playerPleaseStopBtn.addEventListener('click', () => {
-                socket.emit('playerCommand', { type: 'please_stop', message: 'Player: please stop' });
+                socket.emit('playerCommand', { room: myRoom, type: 'please_stop', message: 'Player: please stop' }); // Pass myRoom
                 showMessage('ส่งคำขอ: Please Stop!', 'success');
             });
 
-            // Back to Lobby button
             backToLobbyBtnPlayer.addEventListener('click', () => {
                 showMessage("กำลังกลับสู่ล็อบบี้...", 'info');
-                socket.emit('leaveRoom'); // Inform server that Player is leaving the room
+                socket.emit('leaveRoom');
                 if (peerConnection && peerConnection.connectionState !== 'closed') {
                     peerConnection.close();
                     peerConnection = null;
-                    videoSender = null; // Clear video sender reference
+                    videoSender = null;
                 }
-                stopCamera(); // Also calls syncStrokeVisualizerHeight
+                stopCamera();
                 remoteVideo.srcObject = null;
-                remoteVideo.style.display = 'none'; // Ensure remote video is hidden too
+                remoteVideo.style.display = 'none';
                 if (playerElapsedTimeInterval) {
                     clearInterval(playerElapsedTimeInterval);
                     playerElapsedTimeInterval = null;
@@ -728,17 +713,14 @@
                 if (strokeInterval) {
                     clearInterval(strokeInterval);
                     strokeInterval = null;
-                    strokeVisualizer.style.height = '0%'; // Reset visualizer
+                    strokeVisualizer.style.height = '0%';
                     strokeVisualizer.classList.remove('stroke-pulse');
                 }
-                // Do NOT disconnect the main socket connection here.
-                // It should remain connected to join other rooms in the lobby.
                 setTimeout(() => {
                     window.location.href = '/lobby.html';
-                }, 1500); // Redirect after message
+                }, 1500);
             });
 
-            // Add event listener for window resize to resync visualizer height
             window.addEventListener('resize', syncStrokeVisualizerHeight);
         });
 
@@ -747,21 +729,20 @@
             console.log("Player received command from Master:", data);
             if (data.type === 'cum_now') {
                 showMessage("Master สั่งให้คุณหลั่ง! 💦💦💦", 'success');
-                playerArousalLevel = maxArousal; // Set arousal to max
+                playerArousalLevel = maxArousal;
                 updateArousalDisplay();
-                // Consider adding game end logic here
             } else if (data.type === 'dont_touch') {
-                showMessage(data.message, 'error'); // Usually a warning/error
+                showMessage(data.message, 'error');
             } else if (data.type === 'ok' || data.type === 'no') {
-                showMessage(data.message, 'info'); // General info
+                showMessage(data.message, 'info');
             } else if (data.type === 'bpm_update') {
                 animateStrokeVisualizer(data.bpm);
                 showMessage(`ความเร็ว: ${data.bpm} BPM`, 'info');
             } else if (data.type === 'bpm_stop') {
-                animateStrokeVisualizer(0); // Stop animation by setting BPM to 0
+                animateStrokeVisualizer(0);
                 showMessage("Master สั่งหยุด!", 'info');
             } else if (data.type === 'bpm_start') {
-                animateStrokeVisualizer(data.bpm); // Re-start with current BPM
+                animateStrokeVisualizer(data.bpm);
                 showMessage("Master สั่งเริ่ม!", 'info');
             }
         });
@@ -769,15 +750,11 @@
         // Handle initial connection or reconnection - server typically sends 'paired'
         socket.on('connect', () => {
             console.log('Player connected to Socket.IO server.');
-            // Server should send 'paired' event if game state dictates a live session
         });
 
         socket.on('disconnect', () => {
             console.log('Player disconnected from Socket.IO server.');
-            // This happens if the server restarts or connection is lost.
-            // If it's an unexpected disconnect, consider showing a message or attempting to reconnect.
         });
     </script>
 </body>
 </html>
-
