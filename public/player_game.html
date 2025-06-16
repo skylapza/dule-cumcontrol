@@ -336,315 +336,351 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Global socket connection
-        const socket = io();
+        // NEW: All JavaScript code is now wrapped in DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Global socket connection
+            const socket = io();
 
-        // Global variables for WebRTC and game state
-        let peerConnection;
-        let localStream;
-        let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
-        let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
-        let myRoom; // Global variable for current room
-        let myRole; // Global variable for current role
+            // Global variables for WebRTC and game state
+            let peerConnection;
+            let localStream;
+            let currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+            let videoSender = null; // To store the RTCRtpSender for the video track for replaceTrack
+            let myRoom; // Global variable for current room
+            let myRole; // Global variable for current role
 
-        // WebRTC Config with STUN servers
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
-            ]
-        };
+            // WebRTC Config with STUN servers
+            const rtcConfig = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            };
 
-        // Player Game Logic variables
-        const maxArousal = 10;
-        let playerArousalLevel = 5;
-        let playerGameElapsedTime = 0;
-        let playerElapsedTimeInterval = null; // Interval ID for game timer
-        let strokeInterval; // For BPM animation
+            // Player Game Logic variables
+            const maxArousal = 10;
+            let playerArousalLevel = 5;
+            let playerGameElapsedTime = 0;
+            let playerElapsedTimeInterval = null; // Interval ID for game timer
+            let strokeInterval; // For BPM animation
 
-        // DOM Elements
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const playerGameTimer = document.getElementById('playerGameTimer');
-        const playerArousalDisplay = document.getElementById('playerArousalDisplay');
-        const playerArousalBar = document.getElementById('playerArousalBar');
-        const increaseArousalBtn = document.getElementById('increaseArousalBtn');
-        const decreaseArousalBtn = document.getElementById('decreaseArousalBtn');
-        const playerSlowPleaseBtn = document.getElementById('playerSlowPleaseBtn');
-        const playerICanCumBtn = document.getElementById('playerICanCumBtn');
-        const playerPleaseStopBtn = document.getElementById('playerPleaseStopBtn');
-        const backToLobbyBtnPlayer = document.getElementById('backToLobbyBtnPlayer');
-        const playerOpenCameraBtn = document.getElementById('playerOpenCameraBtn');
-        const playerSwapCameraBtn = document.getElementById('playerSwapCameraBtn');
-        const playerStopCameraBtn = document.getElementById('playerStopCameraBtn');
-        const strokeVisualizer = document.getElementById('strokeVisualizer');
-        const strokeVisualizerContainer = document.querySelector('.stroke-visualizer-container');
-        const messageBox = document.getElementById('messageBox');
+            // DOM Elements
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const playerGameTimer = document.getElementById('playerGameTimer');
+            const playerArousalDisplay = document.getElementById('playerArousalDisplay');
+            const playerArousalBar = document.getElementById('playerArousalBar');
+            const increaseArousalBtn = document.getElementById('increaseArousalBtn');
+            const decreaseArousalBtn = document.getElementById('decreaseArousalBtn');
+            const playerSlowPleaseBtn = document.getElementById('playerSlowPleaseBtn');
+            const playerICanCumBtn = document.getElementById('playerICanCumBtn');
+            const playerPleaseStopBtn = document.getElementById('playerPleaseStopBtn');
+            const backToLobbyBtnPlayer = document.getElementById('backToLobbyBtnPlayer');
+            const playerOpenCameraBtn = document.getElementById('playerOpenCameraBtn');
+            const playerSwapCameraBtn = document.getElementById('playerSwapCameraBtn');
+            const playerStopCameraBtn = document.getElementById('playerStopCameraBtn');
+            const strokeVisualizer = document.getElementById('strokeVisualizer');
+            const strokeVisualizerContainer = document.querySelector('.stroke-visualizer-container');
+            const messageBox = document.getElementById('messageBox');
 
 
-        // Function to play stroke sound (Tone.js could be used for more control)
-        function playStrokeSound() {
-            try {
-                const audio = new Audio('/sounds/stroke.mp3');
-                audio.volume = 0.3;
-                audio.play().catch(e => console.warn("Cannot play audio: ", e));
-            } catch (e) {
-                console.error("Error creating audio object:", e);
-            }
-        }
-
-        // Function to display custom messages (consistent with other pages)
-        function showMessage(message, type = 'error') {
-            messageBox.textContent = message;
-            messageBox.className = 'message-box show'; // Reset classes and show
-            messageBox.classList.add(type); // Add specific type class for styling
-            setTimeout(() => {
-                messageBox.classList.remove('show');
-            }, 3000);
-        }
-
-        // Function to update arousal display
-        function updateArousalDisplay() {
-            playerArousalDisplay.textContent = `ความเงี่ยนตอนนี้: ${playerArousalLevel}/${maxArousal}`;
-            playerArousalBar.style.width = `${(playerArousalLevel / maxArousal) * 100}%`;
-            socket.emit("playerArousalUpdate", playerArousalLevel); // Emit to Master via Socket.IO
-        }
-
-        // Function to synchronize stroke visualizer height with local video
-        function syncStrokeVisualizerHeight() {
-            if (localVideo && strokeVisualizerContainer && localVideo.style.display !== 'none') {
-                requestAnimationFrame(() => {
-                    const videoHeight = localVideo.offsetHeight;
-                    if (videoHeight > 0) {
-                        strokeVisualizerContainer.style.height = `${videoHeight}px`;
-                    }
-                });
-            } else {
-                 strokeVisualizerContainer.style.height = `200px`; // Fallback height if video is hidden
-            }
-        }
-
-        // Function to animate the stroke visualizer
-        function animateStrokeVisualizer(bpm) {
-            if (strokeInterval) clearInterval(strokeInterval);
-
-            if (bpm === 0) {
-                strokeVisualizer.style.height = '0%';
-                strokeVisualizer.classList.remove('stroke-pulse');
-                return;
+            // Function to play stroke sound (Tone.js could be used for more control)
+            function playStrokeSound() {
+                try {
+                    const audio = new Audio('/sounds/stroke.mp3');
+                    audio.volume = 0.3;
+                    audio.play().catch(e => console.warn("Cannot play audio: ", e));
+                } catch (e) {
+                    console.error("Error creating audio object:", e);
+                }
             }
 
-            const intervalMs = 60000 / bpm;
-
-            strokeInterval = setInterval(() => {
-                strokeVisualizer.style.height = '100%';
-                strokeVisualizer.classList.add('stroke-pulse');
-                if (bpm >= 140) playStrokeSound();
-
+            // Function to display custom messages (consistent with other pages)
+            function showMessage(message, type = 'error') {
+                messageBox.textContent = message;
+                messageBox.className = 'message-box show'; // Reset classes and show
+                messageBox.classList.add(type); // Add specific type class for styling
                 setTimeout(() => {
-                    strokeVisualizer.style.height = '60%';
-                    setTimeout(() => {
-                        strokeVisualizer.classList.remove('stroke-pulse');
-                    }, 300);
-                }, intervalMs / 2);
-            }, intervalMs);
-        }
-
-        // Camera and WebRTC Functions
-        async function startCamera(facingMode = 'user') {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localVideo.srcObject = null;
+                    messageBox.classList.remove('show');
+                }, 3000);
             }
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facingMode },
-                    audio: false // Player does not need to send audio
-                });
-                localVideo.srcObject = localStream;
-                localVideo.style.display = 'block';
-                currentFacingMode = facingMode;
-                showMessage("กล้องเปิดแล้ว", 'success');
 
-                if (peerConnection) {
+            // Function to update arousal display
+            function updateArousalDisplay() {
+                playerArousalDisplay.textContent = `ความเงี่ยนตอนนี้: ${playerArousalLevel}/${maxArousal}`;
+                playerArousalBar.style.width = `${(playerArousalLevel / maxArousal) * 100}%`;
+                socket.emit("playerArousalUpdate", playerArousalLevel); // Emit to Master via Socket.IO
+            }
+
+            // Function to synchronize stroke visualizer height with local video
+            function syncStrokeVisualizerHeight() {
+                if (localVideo && strokeVisualizerContainer && localVideo.style.display !== 'none') {
+                    requestAnimationFrame(() => {
+                        const videoHeight = localVideo.offsetHeight;
+                        if (videoHeight > 0) {
+                            strokeVisualizerContainer.style.height = `${videoHeight}px`;
+                        }
+                    });
+                } else {
+                    strokeVisualizerContainer.style.height = `200px`; // Fallback height if video is hidden
+                }
+            }
+
+            // Function to animate the stroke visualizer
+            function animateStrokeVisualizer(bpm) {
+                if (strokeInterval) clearInterval(strokeInterval);
+
+                if (bpm === 0) {
+                    strokeVisualizer.style.height = '0%';
+                    strokeVisualizer.classList.remove('stroke-pulse');
+                    return;
+                }
+
+                const intervalMs = 60000 / bpm;
+
+                strokeInterval = setInterval(() => {
+                    strokeVisualizer.style.height = '100%';
+                    strokeVisualizer.classList.add('stroke-pulse');
+                    if (bpm >= 140) playStrokeSound();
+
+                    setTimeout(() => {
+                        strokeVisualizer.style.height = '60%';
+                        setTimeout(() => {
+                            strokeVisualizer.classList.remove('stroke-pulse');
+                        }, 300);
+                    }, intervalMs / 2);
+                }, intervalMs);
+            }
+
+            // Camera and WebRTC Functions
+            async function startCamera(facingMode = 'user') {
+                console.log(`[Player] Attempting to start camera with facing mode: ${facingMode}`);
+                if (localStream) {
+                    console.log('[Player] Stopping existing local stream tracks.');
+                    localStream.getTracks().forEach(track => track.stop());
+                    localVideo.srcObject = null;
+                }
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: facingMode },
+                        audio: false // Player does not need to send audio
+                    });
+                    console.log('[Player] Got local stream:', localStream);
+                    localVideo.srcObject = localStream;
+                    localVideo.style.display = 'block';
+                    currentFacingMode = facingMode;
+                    showMessage("กล้องเปิดแล้ว", 'success');
+
+                    if (peerConnection) {
+                        console.log('[Player] Peer connection exists, adding/replacing tracks.');
+                        const videoTrack = localStream.getVideoTracks()[0];
+                        if (videoTrack) {
+                            if (videoSender) {
+                                console.log('[Player] Replacing existing video track.');
+                                await videoSender.replaceTrack(videoTrack);
+                            } else {
+                                console.log('[Player] Adding new video track.');
+                                videoSender = peerConnection.addTrack(videoTrack, localStream);
+                            }
+                        }
+                    } else {
+                        console.log('[Player] Peer connection not yet created when startCamera was called. Tracks will be added later.');
+                    }
+                } catch (e) {
+                    console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
+                    let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
+                    if (e.name === "NotAllowedError") {
+                        errorMessage += ": ไม่ได้รับอนุญาตให้ใช้กล้อง (โปรดตรวจสอบการอนุญาตของเบราว์เซอร์)";
+                    } else if (e.name === "NotFoundError") {
+                        errorMessage += ": ไม่พบอุปกรณ์กล้อง";
+                    } else {
+                        errorMessage += `: ${e.message}`;
+                    }
+                    showMessage(errorMessage, 'error');
+                }
+            }
+
+            function stopCamera() {
+                console.log('[Player] Stopping camera.');
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                    localVideo.srcObject = null;
+                    localVideo.style.display = 'none';
+                    showMessage("กล้องปิดแล้ว", 'info');
+
+                    // Remove tracks from peer connection if it exists
+                    if (peerConnection) {
+                        peerConnection.getSenders().forEach(sender => {
+                            if (sender.track && sender.track.kind === 'video') {
+                                peerConnection.removeTrack(sender);
+                                console.log(`[Player] Removed video track from peer connection.`);
+                            }
+                        });
+                        videoSender = null; // Clear video sender reference
+                    }
+                }
+                syncStrokeVisualizerHeight();
+            }
+
+            async function switchCamera() {
+                console.log('[Player] Switching camera.');
+                const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+                await startCamera(newFacingMode);
+            }
+
+            // WebRTC Setup: Create Peer Connection
+            function createPeerConnection() {
+                if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    console.warn("[Player] Peer connection already exists and is not closed. Skipping creation.");
+                    return;
+                }
+
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                console.log("[Player] RTCPeerConnection created.");
+
+                // NEW: Add local stream tracks to peer connection if available immediately
+                // This ensures tracks are associated with the PC as soon as it's created.
+                if (localStream) {
+                    console.log('[Player] Local stream exists, adding tracks during peer connection creation.');
                     const videoTrack = localStream.getVideoTracks()[0];
                     if (videoTrack) {
-                        if (videoSender) {
-                            await videoSender.replaceTrack(videoTrack);
-                            console.log('Replaced video track in peer connection');
-                        } else {
-                            videoSender = peerConnection.addTrack(videoTrack, localStream);
-                            console.log('Added video track for the first time to peer connection');
-                        }
+                        videoSender = peerConnection.addTrack(videoTrack, localStream);
+                        console.log('[Player] Added initial video track to peer connection during creation.');
                     }
-                }
-            } catch (e) {
-                console.error("ไม่สามารถเข้าถึงกล้องได้: ", e);
-                let errorMessage = "ไม่สามารถเข้าถึงกล้องได้";
-                if (e.name === "NotAllowedError") {
-                    errorMessage += ": ไม่ได้รับอนุญาตให้ใช้กล้อง (โปรดตรวจสอบการอนุญาตของเบราว์เซอร์)";
-                } else if (e.name === "NotFoundError") {
-                    errorMessage += ": ไม่พบอุปกรณ์กล้อง";
                 } else {
-                    errorMessage += `: ${e.message}`;
+                    console.log('[Player] Local stream not available during peer connection creation. Will add tracks when startCamera is called.');
                 }
-                showMessage(errorMessage, 'error');
-            }
-        }
 
-        function stopCamera() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-                localVideo.srcObject = null;
-                localVideo.style.display = 'none';
-                showMessage("กล้องปิดแล้ว", 'info');
-            }
-            syncStrokeVisualizerHeight();
-        }
-
-        async function switchCamera() {
-            const newFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-            await startCamera(newFacingMode);
-        }
-
-        // WebRTC Setup: Create Peer Connection
-        function createPeerConnection() {
-            if (peerConnection && peerConnection.connectionState !== 'closed') {
-                console.warn("Peer connection already exists and is not closed. Skipping creation.");
-                return;
-            }
-
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            console.log("RTCPeerConnection created.");
-
-            if (localStream) {
-                const videoTrack = localStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    videoSender = peerConnection.addTrack(videoTrack, localStream);
-                }
-            }
-
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    console.log('Sending ICE candidate:', event.candidate);
-                    socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom with the signal
-                }
-            };
-
-            peerConnection.ontrack = (event) => {
-                if (remoteVideo.srcObject !== event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.style.display = 'block';
-                    showMessage('ได้รับสตรีมวิดีโอจาก Master แล้ว', 'success');
-                    console.log('Received remote stream');
-                }
-            };
-
-            peerConnection.onconnectionstatechange = (event) => {
-                console.log('WebRTC connection state:', peerConnection.connectionState);
-                if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
-                    showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
-                } else if (peerConnection.connectionState === 'connected') {
-                    showMessage('เชื่อมต่อ WebRTC กับ Master สำเร็จ!', 'success');
-                }
-            };
-
-            peerConnection.onsignalingstatechange = (event) => {
-                console.log('WebRTC signaling state:', peerConnection.signalingState);
-            };
-        }
-
-        // Socket.IO Listeners for WebRTC Signaling
-        socket.on('paired', async ({ role, room }) => {
-            showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
-            // Store room and role globally
-            myRoom = room;
-            myRole = role;
-
-            await startCamera(); // Start camera automatically when paired
-            createPeerConnection(); // Create peer connection when paired
-
-            // Player waits for offer from Master, then sends answer.
-        });
-
-        socket.on('signal', async (data) => {
-            // Ensure myRoom is set before processing signals
-            if (!myRoom && data.room) {
-                myRoom = data.room; // Try to get room from incoming signal if not set
-            }
-            if (!peerConnection || peerConnection.signalingState === 'closed') {
-                await startCamera(); // Ensure camera/stream is ready before creating PC
-                createPeerConnection();
-            }
-
-            if (data.sdp) {
-                console.log('Received SDP:', data.sdp.type);
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-
-                    if (data.sdp.type === 'offer') {
-                        console.log('Received offer from Master, creating answer...');
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom with the answer signal
-                        console.log('WebRTC answer sent.');
-                    } else if (data.sdp.type === 'answer') {
-                        console.log('Received answer from Master (unexpected for Player, but handled)');
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('[Player] Sending ICE candidate:', event.candidate);
+                        socket.emit('signal', { room: myRoom, candidate: event.candidate }); // Pass myRoom with the signal
                     }
-                } catch (e) {
-                    console.error("Error setting remote description or creating answer:", e);
-                    showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
+                };
+
+                peerConnection.ontrack = (event) => {
+                    console.log('[Player] Received remote track event:', event.streams);
+                    if (remoteVideo.srcObject !== event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.style.display = 'block';
+                        showMessage('ได้รับสตรีมวิดีโอจาก Master แล้ว', 'success');
+                        console.log('[Player] Received remote stream from Master.');
+                    }
+                };
+
+                peerConnection.onconnectionstatechange = (event) => {
+                    console.log('[Player] WebRTC connection state:', peerConnection.connectionState);
+                    if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+                        showMessage('การเชื่อมต่อ WebRTC หลุด/ล้มเหลว', 'error');
+                    } else if (peerConnection.connectionState === 'connected') {
+                        showMessage('เชื่อมต่อ WebRTC กับ Master สำเร็จ!', 'success');
+                    }
+                };
+
+                peerConnection.onsignalingstatechange = (event) => {
+                    console.log('[Player] WebRTC signaling state:', peerConnection.signalingState);
+                };
+            }
+
+            // Socket.IO Listeners for WebRTC Signaling
+            socket.on('paired', async ({ role, room }) => {
+                console.log(`[Player] Paired event received: role=${role}, room=${room}`);
+                showMessage('จับคู่สำเร็จ! เตรียมพร้อมสำหรับเกม', 'success');
+                // Store room and role globally
+                myRoom = room;
+                myRole = role;
+
+                createPeerConnection(); // 1. Create peer connection
+                await startCamera(); // 2. Get local stream and add tracks to the peer connection
+
+                // Player waits for offer from Master, then sends answer.
+            });
+
+            socket.on('signal', async (data) => {
+                console.log(`[Player] Signal received: type=${data.sdp ? data.sdp.type : 'candidate'}`);
+                // Ensure myRoom is set before processing signals
+                if (!myRoom && data.room) {
+                    myRoom = data.room; // Try to get room from incoming signal if not set
+                    console.log(`[Player] myRoom was not set, initialized from signal data: ${myRoom}`);
                 }
-            } else if (data.candidate) {
-                console.log('Received ICE candidate:', data.candidate);
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) {
-                    console.error("Error adding ICE candidate:", e);
-                    showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
+
+                if (!peerConnection || peerConnection.signalingState === 'closed') {
+                    console.warn('[Player] PeerConnection not initialized or closed, recreating and starting camera.');
+                    createPeerConnection(); // Recreate PC if closed or not initialized
+                    await startCamera(); // Ensure camera/stream is ready after PC
                 }
-            }
-        });
 
-        // Handle partner disconnected
-        socket.on('partnerDisconnected', (message) => {
-            showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
-            if (peerConnection && peerConnection.connectionState !== 'closed') {
-                peerConnection.close();
-                peerConnection = null;
-                videoSender = null;
-            }
-            stopCamera();
-            remoteVideo.srcObject = null;
-            remoteVideo.style.display = 'none';
-            if (playerElapsedTimeInterval) {
-                clearInterval(playerElapsedTimeInterval);
-                playerElapsedTimeInterval = null;
-            }
-            if (strokeInterval) {
-                clearInterval(strokeInterval);
-                strokeInterval = null;
-                strokeVisualizer.style.height = '0%';
-                strokeVisualizer.classList.remove('stroke-pulse');
-            }
-            setTimeout(() => {
-                window.location.href = '/lobby.html';
-            }, 3000);
-        });
+                if (data.sdp) {
+                    console.log('[Player] Received SDP:', data.sdp.type);
+                    try {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
+                        if (data.sdp.type === 'offer') {
+                            console.log('[Player] Received offer from Master, creating answer...');
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            socket.emit('signal', { room: myRoom, sdp: answer }); // Pass myRoom with the answer signal
+                            console.log('[Player] WebRTC answer sent.');
+                        } else if (data.sdp.type === 'answer') {
+                            console.log('[Player] Received answer from Master (unexpected for Player, but handled defensively)');
+                        }
+                    } catch (e) {
+                        console.error("[Player] Error setting remote description or creating answer:", e);
+                        showMessage("เกิดข้อผิดพลาดในการรับ/ส่งข้อมูล WebRTC: " + e.message, 'error');
+                    }
+                } else if (data.candidate) {
+                    console.log('[Player] Received ICE candidate:', data.candidate);
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } catch (e) {
+                        console.error("[Player] Error adding ICE candidate:", e);
+                        showMessage("เกิดข้อผิดพลาดในการเพิ่ม ICE candidate: " + e.message, 'error');
+                    }
+                }
+            });
+
+            // Handle partner disconnected
+            socket.on('partnerDisconnected', (message) => {
+                console.log('[Player] Partner disconnected event received.');
+                showMessage(message + "\nคุณจะถูกนำกลับไปยังล็อบบี้", 'info');
+                if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    peerConnection.close();
+                    peerConnection = null;
+                    videoSender = null;
+                }
+                stopCamera();
+                remoteVideo.srcObject = null;
+                remoteVideo.style.display = 'none';
+                if (playerElapsedTimeInterval) {
+                    clearInterval(playerElapsedTimeInterval);
+                    playerElapsedTimeInterval = null;
+                }
+                if (strokeInterval) {
+                    clearInterval(strokeInterval);
+                    strokeInterval = null;
+                    strokeVisualizer.style.height = '0%';
+                    strokeVisualizer.classList.remove('stroke-pulse');
+                }
+                setTimeout(() => {
+                    window.location.href = '/lobby.html';
+                }, 3000);
+            });
 
 
-        // --- Event Listeners for DOM elements ---
-        document.addEventListener('DOMContentLoaded', () => {
+            // --- Event Listeners for DOM elements ---
+            console.log('[Player] DOM Content Loaded.');
             // Initialize myRoom and myRole from URL parameters on page load
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('room') && urlParams.has('role')) {
                 myRoom = parseInt(urlParams.get('room'));
                 myRole = urlParams.get('role');
-                console.log(`Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+                console.log(`[Player] Initialized from URL: Room ${myRoom}, Role ${myRole}`);
+            } else {
+                console.log('[Player] No room/role in URL. Assuming fresh load or direct access.');
             }
 
             updateArousalDisplay();
@@ -696,9 +732,11 @@
             });
 
             backToLobbyBtnPlayer.addEventListener('click', () => {
+                console.log('[Player] Back to Lobby button clicked.');
                 showMessage("กำลังกลับสู่ล็อบบี้...", 'info');
                 socket.emit('leaveRoom');
                 if (peerConnection && peerConnection.connectionState !== 'closed') {
+                    console.log('[Player] Closing peer connection on leave.');
                     peerConnection.close();
                     peerConnection = null;
                     videoSender = null;
@@ -722,7 +760,7 @@
             });
 
             window.addEventListener('resize', syncStrokeVisualizerHeight);
-        });
+        }); // End of DOMContentLoaded
 
         // Socket.IO Listeners for game commands from Master
         socket.on('masterCommand', (data) => {
@@ -749,11 +787,36 @@
 
         // Handle initial connection or reconnection - server typically sends 'paired'
         socket.on('connect', () => {
-            console.log('Player connected to Socket.IO server.');
+            console.log('[Player] Player connected to Socket.IO server.');
+            // When reconnecting, the server.js 'disconnect' handler and 'partnerDisconnected' event
+            // are designed to redirect to lobby if partner leaves. If player just refreshes
+            // and partner is still active, server should ideally re-send 'paired' or equivalent state.
+            // For now, if server does not re-send 'paired', the client will stay on game page but
+            // WebRTC might not fully re-establish without manual intervention.
         });
 
         socket.on('disconnect', () => {
-            console.log('Player disconnected from Socket.IO server.');
+            console.log('[Player] Player disconnected from Socket.IO server.');
+            // This is handled by partnerDisconnected if partner leaves, or by server.js disconnect handler.
+            // Client-side should clear state when this happens to avoid ghosting.
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+                videoSender = null;
+            }
+            stopCamera();
+            remoteVideo.srcObject = null;
+            remoteVideo.style.display = 'none';
+            if (playerElapsedTimeInterval) {
+                clearInterval(playerElapsedTimeInterval);
+                playerElapsedTimeInterval = null;
+            }
+            if (strokeInterval) {
+                clearInterval(strokeInterval);
+                strokeInterval = null;
+                strokeVisualizer.style.height = '0%';
+                strokeVisualizer.classList.remove('stroke-pulse');
+            }
         });
     </script>
 </body>
