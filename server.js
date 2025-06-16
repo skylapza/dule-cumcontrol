@@ -1,4 +1,4 @@
-// 📦 server.js - Signaling server for WebRTC and 1-on-1 room matching
+// 📦 server.js - WebRTC signaling server for Render deployment
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -8,10 +8,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ Serve static files (e.g. player_game.html, script.js)
+// Serve static files (public directory)
 app.use(express.static(path.join(__dirname, 'public')));
 
-const rooms = {}; // Store 1-on-1 room users
+const rooms = {}; // เก็บ socket.id ของผู้ใช้ในแต่ละห้อง
 
 io.on('connection', (socket) => {
   console.log(`📡 User connected: ${socket.id}`);
@@ -23,7 +23,6 @@ io.on('connection', (socket) => {
     if (!rooms[roomId]) rooms[roomId] = [];
     rooms[roomId].push(socket.id);
 
-    // ถ้ามี 2 คนแล้ว ส่งสัญญาณเริ่มจับคู่ให้ทั้งคู่
     if (rooms[roomId].length === 2) {
       io.to(roomId).emit('ready');
     }
@@ -50,7 +49,8 @@ io.on('connection', (socket) => {
   });
 });
 
+// ✅ Use Render-compatible port and host
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
